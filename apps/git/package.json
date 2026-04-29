@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "portless git --app-port 8788 wrangler dev --port 8788",
+    "dev": "portless git --app-port 8788 wrangler dev --port 8788 --inspector-port 9232",
     "build": "tsc --noEmit",
     "deploy": "wrangler deploy"
   },

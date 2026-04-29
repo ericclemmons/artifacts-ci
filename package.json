@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "ready": "vp fmt && vp lint && vp run test -r && vp run build -r",
-    "dev": "vp run --filter ./apps/* --parallel dev",
+    "dev": "vp run dev",
     "prepare": "vp config"
   },
   "devDependencies": {

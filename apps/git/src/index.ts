@@ -1,3 +1,5 @@
+import { WorkflowEntrypoint } from "cloudflare:workers";
+import type { WorkflowEvent, WorkflowStep } from "cloudflare:workers";
 import {
   cleanRepoName,
   encodeSideBandProgress,
@@ -6,9 +8,26 @@ import {
 } from "./git-protocol";
 
 const DEFAULT_NAMESPACE = "production";
+const CI_BASE_URL = "https://ci.localhost";
+
+type DeployParams = {
+  namespace: string;
+  repo: string;
+  pushedAt: string;
+};
+
+export class DeployWorkflow extends WorkflowEntrypoint<Env, DeployParams> {
+  async run(event: WorkflowEvent<DeployParams>, step: WorkflowStep) {
+    return step.do("record accepted push", async () => ({
+      ...event.payload,
+      status: "accepted",
+      message: "Sandbox deploy pipeline will run in the next phase.",
+    }));
+  }
+}
 
 export default {
-  async fetch(request: Request): Promise<Response> {
+  async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
     const route = parseGitRoute(url.pathname);
 
@@ -48,7 +67,12 @@ export default {
     });
 
     if (route.suffix === "/git-receive-pack" && request.method === "POST") {
-      return withPushProgress(upstreamResponse, { ...route, repo: repoName }, supportsSideBand);
+      return withPushProgress(
+        env,
+        upstreamResponse,
+        { ...route, repo: repoName },
+        supportsSideBand,
+      );
     }
 
     return upstreamResponse;
@@ -147,6 +171,7 @@ function isExpectedRemote(remote: string | undefined, namespace: string, repoNam
 }
 
 async function withPushProgress(
+  env: Env,
   response: Response,
   route: { namespace: string; repo: string },
   supportsSideBand: boolean,
@@ -172,10 +197,20 @@ async function withPushProgress(
     });
   }
 
+  const runId = crypto.randomUUID();
+  await env.DEPLOY_WORKFLOW.create({
+    id: runId,
+    params: {
+      namespace: route.namespace,
+      repo: route.repo,
+      pushedAt: new Date().toISOString(),
+    },
+  });
+
   const progress = encodeSideBandProgress([
     "Cloudflare CI accepted push",
     `repo ${route.namespace}/${route.repo}`,
-    `run https://ci.localhost/runs/${crypto.randomUUID()}`,
+    `run ${CI_BASE_URL}/runs/${runId}`,
     "next: workflow trigger",
   ]);
 

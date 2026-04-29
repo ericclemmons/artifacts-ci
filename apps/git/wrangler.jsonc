@@ -6,4 +6,11 @@
   "observability": {
     "enabled": true,
   },
+  "workflows": [
+    {
+      "name": "git-push-cf-deploy",
+      "binding": "DEPLOY_WORKFLOW",
+      "class_name": "DeployWorkflow",
+    },
+  ],
 }
