@@ -18,6 +18,10 @@
 - `git push cloudflare` has been validated locally with side-band output.
 - Accepted pushes create a durable Workflow instance and print a run URL.
 - Workflow is scaffolded into checkout/install/build/deploy steps with `ReadableStream`-friendly placeholders for future Sandbox output.
+- Sandbox SDK is wired into `apps/git` with the minimal container Dockerfile and Worker binding.
+- Sandbox CI echo is statically validated, and Wrangler can build the Sandbox container with Docker/OrbStack.
+- Local `ci` and `git` dev Workers start cleanly after stopping stale `portless` wrappers; no `--force` script change is needed right now.
+- Local Sandbox runtime is validated with the arm64 `proxy-everything` image override from cloudflare/sandbox-sdk#522.
 
 **Monorepo Changes**
 
@@ -68,12 +72,16 @@
 
 **Phase 4: Sandbox CI Echo**
 
-- Current scaffold: Workflow has durable checkout/install/build/deploy steps with `ReadableStream` placeholders.
-- Workflow uses Sandbox SDK + Artifacts pattern to clone the pushed repo.
-- Assume `pnpm`; no package-manager detection.
-- Run `pnpm install`, `pnpm build`, `pnpx wrangler --version`, then `echo pnpx wrangler deploy`.
+- Done: add Sandbox SDK dependency, minimal `Dockerfile`, container binding, Durable Object binding, and migration.
+- Done: Workflow uses Sandbox SDK + Artifacts pattern to clone the pushed repo.
+- Done: assume `pnpm`; no package-manager detection.
+- Done: run `pnpm install`, `pnpm build`, and `pnpx wrangler --version` through Sandbox `execStream`.
 - Stream available command output to git side-band while connection is alive.
 - Capture enough Workflow output to debug without adding storage yet.
+- Done: `wrangler deploy --dry-run` for `apps/git` builds the Sandbox container when Docker/OrbStack is running.
+- Done: fresh `ci.localhost` and `git.localhost` dev processes are healthy, and `git push cloudflare` still succeeds from a clean process state.
+- Done: local Sandbox Workflow execution uses `MINIFLARE_CONTAINER_EGRESS_IMAGE` to pin the arm64 `proxy-everything` digest and avoid the Wrangler sidecar crash on arm64.
+- Done: package-backed push validates Sandbox clone, `pnpm install`, `pnpm build`, and `pnpx wrangler --version` all exit 0.
 
 **Phase 5: Real Static Deploy**
 

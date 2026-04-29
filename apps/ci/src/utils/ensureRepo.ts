@@ -8,7 +8,8 @@ export async function ensureRepo(repoName: string) {
   try {
     const repo = await env.ARTIFACTS.get(repoName);
     const token = await repo.createToken("write");
-    const remote = repo.remote ?? remoteByRepo.get(repoName);
+    const remote =
+      (await (repo.remote as unknown as Promise<string | undefined>)) ?? remoteByRepo.get(repoName);
 
     if (remote) {
       remoteByRepo.set(repoName, remote);

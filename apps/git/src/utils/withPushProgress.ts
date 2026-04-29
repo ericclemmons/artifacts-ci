@@ -5,7 +5,7 @@ const CI_BASE_URL = "https://ci.localhost";
 export async function withPushProgress(
   env: Env,
   response: Response,
-  route: { namespace: string; repo: string; remote: string },
+  route: { namespace: string; repo: string; remote: string; token: string },
   supportsSideBand: boolean,
 ) {
   const headers = new Headers(response.headers);
@@ -28,6 +28,7 @@ export async function withPushProgress(
       namespace: route.namespace,
       repo: route.repo,
       artifactsRemote: route.remote,
+      artifactsToken: route.token,
       pushedAt: new Date().toISOString(),
     },
   });

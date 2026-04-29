@@ -1,4 +1,5 @@
 export { DeployWorkflow } from "./DeployWorkflow";
+export { Sandbox } from "@cloudflare/sandbox";
 
 import { getUpstream, withArtifactsAuth } from "./utils/artifactsProxy";
 import { cleanRepoName } from "./utils/cleanRepoName";
@@ -53,7 +54,7 @@ export default {
       return withPushProgress(
         env,
         upstreamResponse,
-        { ...route, repo: repoName, remote: upstream.remote },
+        { ...route, repo: repoName, remote: upstream.remote, token: upstream.token },
         supportsSideBand,
       );
     }
