@@ -1,16 +1,18 @@
 packages:
   - apps/*
+  - examples/*
   - packages/*
   - tools/*
 
-catalogMode: prefer
-
 catalog:
   "@types/node": ^24
+  hono: 4.12.15
   typescript: ^5
   vite: npm:@voidzero-dev/vite-plus-core@latest
+  vite-plus: ^0.1.19
   vitest: npm:@voidzero-dev/vite-plus-test@latest
-  vite-plus: latest
+
+catalogMode: prefer
 overrides:
   vite: "catalog:"
   vitest: "catalog:"

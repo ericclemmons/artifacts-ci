@@ -1,0 +1,16 @@
+{
+  "name": "git",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "portless git --app-port 8788 wrangler dev --port 8788",
+    "build": "tsc --noEmit",
+    "deploy": "wrangler deploy"
+  },
+  "devDependencies": {
+    "portless": "^0.11.1",
+    "typescript": "~6.0.2",
+    "wrangler": "^4.86.0"
+  }
+}

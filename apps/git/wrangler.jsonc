@@ -1,0 +1,15 @@
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "git-push-cf-git",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-04-28",
+  "observability": {
+    "enabled": true,
+  },
+  "artifacts": [
+    {
+      "binding": "ARTIFACTS",
+      "namespace": "production",
+    },
+  ],
+}

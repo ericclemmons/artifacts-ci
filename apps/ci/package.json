@@ -1,0 +1,19 @@
+{
+  "name": "ci",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "portless ci --app-port 8787 wrangler dev --port 8787",
+    "build": "tsc --noEmit",
+    "deploy": "wrangler deploy"
+  },
+  "dependencies": {
+    "hono": "catalog:"
+  },
+  "devDependencies": {
+    "portless": "^0.11.1",
+    "typescript": "~6.0.2",
+    "wrangler": "^4.86.0"
+  }
+}
