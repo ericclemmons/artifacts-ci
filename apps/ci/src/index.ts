@@ -3,6 +3,7 @@ import { Hono } from "hono";
 const DEFAULT_BRANCH = "main";
 const DEFAULT_NAMESPACE = "production";
 const GIT_BASE_URL = "https://git.localhost";
+const remoteByRepo = new Map<string, string>();
 
 const app = new Hono<{ Bindings: Env }>();
 
@@ -22,6 +23,7 @@ app.post("/repos", async (context) => {
     commands: [
       `git remote add cloudflare ${GIT_BASE_URL}/${DEFAULT_NAMESPACE}/${name}.git`,
       `git config --local --add http.${GIT_BASE_URL}/.extraHeader "Authorization: Bearer ${repo.token}"`,
+      `git config --local --add http.${GIT_BASE_URL}/.extraHeader "X-Artifacts-Remote: ${repo.remote}"`,
       "git config --local remote.cloudflare.push HEAD",
       "git push cloudflare",
     ],
@@ -34,12 +36,20 @@ async function ensureRepo(env: Env, repoName: string) {
   try {
     const repo = await env.ARTIFACTS.get(repoName);
     const token = await repo.createToken("write");
-    return { remote: repo.remote, token: token.plaintext };
+    const remote = repo.remote ?? remoteByRepo.get(repoName);
+
+    if (remote) {
+      remoteByRepo.set(repoName, remote);
+    }
+
+    return { remote, token: token.plaintext };
   } catch (error) {
     try {
       const created = await env.ARTIFACTS.create(repoName, {
         setDefaultBranch: DEFAULT_BRANCH,
       });
+
+      remoteByRepo.set(repoName, created.remote);
 
       return { remote: created.remote, token: created.token };
     } catch {

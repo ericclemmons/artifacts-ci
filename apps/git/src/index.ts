@@ -5,11 +5,10 @@ import {
   wantsSideBand,
 } from "./git-protocol";
 
-const DEFAULT_BRANCH = "main";
 const DEFAULT_NAMESPACE = "production";
 
 export default {
-  async fetch(request: Request, env: Env): Promise<Response> {
+  async fetch(request: Request): Promise<Response> {
     const url = new URL(request.url);
     const route = parseGitRoute(url.pathname);
 
@@ -32,14 +31,18 @@ export default {
     const body = await getRequestBody(request);
     const supportsSideBand =
       route.suffix === "/git-receive-pack" && request.method === "POST" && wantsSideBand(body);
-    const credentials = await ensureRepo(env, repoName);
-    const token = getBearerToken(request.headers) ?? credentials.token;
-    const upstreamUrl = new URL(credentials.remote + route.suffix);
+    const upstream = getUpstream(request.headers, route.namespace, repoName);
+
+    if (!upstream.ok) {
+      return new Response(upstream.message, { status: upstream.status });
+    }
+
+    const upstreamUrl = new URL(upstream.remote + route.suffix);
     upstreamUrl.search = url.search;
 
     const upstreamResponse = await fetch(upstreamUrl, {
       method: request.method,
-      headers: withArtifactsAuth(request.headers, token),
+      headers: withArtifactsAuth(request.headers, upstream.token),
       body,
       redirect: "manual",
     });
@@ -89,28 +92,11 @@ async function getRequestBody(request: Request) {
   return request.arrayBuffer();
 }
 
-async function ensureRepo(env: Env, repoName: string) {
-  try {
-    const repo = await env.ARTIFACTS.get(repoName);
-    const token = await repo.createToken("write");
-    return { remote: repo.remote, token: token.plaintext };
-  } catch (error) {
-    try {
-      const created = await env.ARTIFACTS.create(repoName, {
-        setDefaultBranch: DEFAULT_BRANCH,
-      });
-
-      return { remote: created.remote, token: created.token };
-    } catch {
-      throw error;
-    }
-  }
-}
-
 function withArtifactsAuth(headers: Headers, token: string) {
   const next = new Headers(headers);
 
   next.set("Authorization", `Bearer ${token}`);
+  next.delete("X-Artifacts-Remote");
   next.delete("Host");
   next.delete("Content-Length");
 
@@ -121,6 +107,43 @@ function getBearerToken(headers: Headers) {
   const authorization = headers.get("Authorization");
   const match = authorization?.match(/^Bearer\s+(.+)$/i);
   return match?.[1];
+}
+
+function getUpstream(headers: Headers, namespace: string, repoName: string) {
+  const token = getBearerToken(headers);
+  const remote = headers.get("X-Artifacts-Remote") ?? undefined;
+
+  if (!token) {
+    return {
+      ok: false as const,
+      status: 401,
+      message: "Missing Artifacts token. Run the setup command from https://ci.localhost first.\n",
+    };
+  }
+
+  if (!isExpectedRemote(remote, namespace, repoName)) {
+    return {
+      ok: false as const,
+      status: 400,
+      message:
+        "Missing or invalid X-Artifacts-Remote header. Run the setup command from https://ci.localhost first.\n",
+    };
+  }
+
+  return { ok: true as const, remote, token };
+}
+
+function isExpectedRemote(remote: string | undefined, namespace: string, repoName: string) {
+  if (!remote?.startsWith("https://")) {
+    return false;
+  }
+
+  try {
+    const url = new URL(remote);
+    return url.pathname === `/git/${namespace}/${repoName}.git`;
+  } catch {
+    return false;
+  }
 }
 
 async function withPushProgress(
