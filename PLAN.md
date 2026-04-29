@@ -11,6 +11,14 @@
 - Keep helpers local in app `utils` until complexity justifies package extraction.
 - No DB initially; defer R2/Agents/UI until push path works.
 
+**Current Status**
+
+- `apps/ci` creates or reuses Artifacts repos and returns setup commands.
+- `apps/git` proxies Git smart HTTP to Artifacts using local Git config headers.
+- `git push cloudflare` has been validated locally with side-band output.
+- Accepted pushes create a durable Workflow instance and print a run URL.
+- Workflow is scaffolded into checkout/install/build/deploy steps with `ReadableStream`-friendly placeholders for future Sandbox output.
+
 **Monorepo Changes**
 
 - Add `apps/git` as Wrangler Worker for Git smart HTTP.
@@ -21,20 +29,21 @@
 
 **Phase 1: Git Worker + Side-Band**
 
-- Implement receive-pack discovery and push routes in `apps/git`.
-- Proxy incoming Git smart-HTTP traffic to Artifacts Git protocol.
-- Forward the user's Artifacts token from local git config.
-- Append side-band progress after successful receive-pack, Heroku/GitHub style.
-- Print synthetic CI lines and a run URL from `git push cloudflare`.
-- Validate `git push cloudflare` updates Artifacts and shows our output.
+- Done: implement receive-pack discovery and push routes in `apps/git`.
+- Done: proxy incoming Git smart-HTTP traffic to Artifacts Git protocol.
+- Done: forward the user's Artifacts token from local git config.
+- Done: append side-band progress after successful receive-pack, Heroku/GitHub style.
+- Done: print synthetic CI lines and a run URL from `git push cloudflare`.
+- Done: validate `git push cloudflare` updates Artifacts and shows our output.
 
 **Phase 1 Setup Command**
 
-- Generate copyable config from `apps/ci` or dev endpoint.
-- Add remote: `git remote add cloudflare https://git.localhost/production/<repo>.git`.
-- Add auth header: `git config --local --add http.https://git.localhost/.extraHeader "Authorization: Bearer <ARTIFACTS_TOKEN>"`.
-- Configure no-refspec UX: `git config --local remote.cloudflare.push HEAD`.
-- Validate plain `git push cloudflare` on current Git.
+- Done: generate copyable config from `apps/ci`.
+- Done: add remote: `git remote add cloudflare https://git.localhost/production/<repo>.git`.
+- Done: add auth header: `git config --local --add http.https://git.localhost/.extraHeader "Authorization: Bearer <ARTIFACTS_TOKEN>"`.
+- Done: add Artifacts remote header: `git config --local --add http.https://git.localhost/.extraHeader "X-Artifacts-Remote: <ARTIFACTS_REMOTE>"`.
+- Done: configure no-refspec UX: `git config --local remote.cloudflare.push HEAD`.
+- Done: validate plain `git push cloudflare` on current Git.
 
 **Phase 1B: isomorphic-git Spike**
 
@@ -44,21 +53,22 @@
 
 **Phase 2: Repo Creation**
 
-- Implement lazy create on first push to `/production/<repo>.git` when the repo is missing.
-- Implement explicit `apps/ci` create flow too, for copyable setup and token retrieval.
-- Use `env.ARTIFACTS.create(repo, { setDefaultBranch: "main" })` where appropriate.
-- Return repo remote, default token, and exact setup commands from `apps/ci`.
-- If lazy create cannot happen at Git discovery time, create during receive-pack before forwarding.
+- Decision: explicit `apps/ci` create flow is primary, because setup needs the repo remote and token before Git can push.
+- Done: implement `apps/ci` repo create/reuse flow for copyable setup and token retrieval.
+- Done: use `env.ARTIFACTS.create(repo, { setDefaultBranch: "main" })` where appropriate.
+- Done: return repo remote, default token, Cloudflare Git remote, and exact setup commands from `apps/ci`.
+- Deferred: lazy create on first push is not needed for MVP and conflicts with token-first setup.
 
 **Phase 3: Workflow Trigger**
 
-- After Artifacts accepts push, derive repo/ref/commit from receive-pack data or Artifacts fetch.
-- Create a Workflow instance exactly once per accepted push.
-- Print Workflow/run URL through side-band immediately.
-- Confirm Ctrl-C after Workflow creation does not stop the Workflow.
+- Done: create a Workflow instance after Artifacts accepts a receive-pack push.
+- Done: print Workflow/run URL through side-band immediately.
+- Deferred: derive repo/ref/commit from receive-pack data or Artifacts fetch.
+- Next validation: confirm Ctrl-C after Workflow creation does not stop the Workflow.
 
 **Phase 4: Sandbox CI Echo**
 
+- Current scaffold: Workflow has durable checkout/install/build/deploy steps with `ReadableStream` placeholders.
 - Workflow uses Sandbox SDK + Artifacts pattern to clone the pushed repo.
 - Assume `pnpm`; no package-manager detection.
 - Run `pnpm install`, `pnpm build`, `pnpx wrangler --version`, then `echo pnpx wrangler deploy`.
@@ -89,7 +99,7 @@
 **Validation Gates**
 
 - A: `https://git.localhost` receives Git smart-HTTP traffic through Portless.
-- B: Worker lazily creates `/production/<repo>.git` when missing.
+- B: `apps/ci` explicitly creates/reuses `/production/<repo>.git` and returns setup commands.
 - C: Worker forwards push to Artifacts successfully.
 - D: `git push cloudflare` works without explicit branch after setup.
 - E: Git client displays side-band text and run URL.
