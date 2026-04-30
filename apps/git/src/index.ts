@@ -19,7 +19,7 @@ export default {
     const runStream = parseRunStreamRoute(url.pathname);
     if (runStream) {
       const runLog = await getAgentByName(env.RunLog, runStream.runId);
-      return runLog.fetch(request);
+      return runLog.fetch(new Request("https://run-log.local/stream", request));
     }
 
     const route = parseGitRoute(url.pathname);
