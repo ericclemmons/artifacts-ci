@@ -21,75 +21,28 @@ The local endpoints are:
 
 ## Smoke Test
 
-This creates a throwaway Vite React app in `/tmp`, configures the Cloudflare Git remote, and pushes it.
+Start local development first, then run the smoke fixture from another terminal:
 
 ```bash
-cd $(mktemp -d)
-vp create vite --no-interactive -- git-push-cf --template react-ts --no-interactive
-cd git-push-cf
+pnpm dev
 ```
-
-Add the workflow that Agent CI will run inside Sandbox:
 
 ```bash
-mkdir -p .github/workflows
-cat > .github/workflows/ci.yml <<'EOF'
-name: CI
-
-on:
-  pull_request:
-  push:
-
-jobs:
-  check:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: voidzero-dev/setup-vp@v1
-        with:
-          node-version: "22"
-          cache: true
-      - run: vp install
-      - run: vp check
-      - run: vp build
-EOF
+pnpm smoke examples/vite-plus
 ```
 
-Create the first commit. Vite scaffolding does not create one for us.
-
-```bash
-git init -b main
-git add .
-git commit -m "Initial Vite app"
-```
-
-Configure the `cloudflare` remote. The script creates/reuses the Artifacts repo, mints a token, and writes the required Git config headers locally.
-
-```bash
-repo="git-push-cf-smoke-$(date +%s)"
-curl -ksSf "https://ci.localhost/repos/$repo.sh" | bash
-```
-
-Push to Cloudflare:
-
-```bash
-git push cloudflare
-```
-
-Confirm the deployed smoke site responds:
-
-```bash
-curl -fsS https://git-push-cf.ericclemmons.workers.dev >/dev/null
-```
+The smoke script copies the example into a temporary directory, creates the first Git commit, configures the Cloudflare remote from `https://ci.localhost/repos/<package-name>.sh`, and pushes the fixture to Cloudflare.
 
 Expected output includes side-band status lines like:
 
 ```text
-remote: 📦 production/git-push-cf-smoke-<timestamp>
+remote: 📦 production/vite-plus-example
 remote: 🗒️ commit <sha>
 remote: 🌐 https://ci.localhost/runs/<id>
-remote: $ npx --yes @redwoodjs/agent-ci run --all
+remote: $ npx --yes @redwoodjs/agent-ci run --workflow .github/workflows/ci.yml
 ```
+
+The repo name comes from the example's `package.json` `name` field. Set `SMOKE_KEEP=1` to keep the temporary workspace for debugging.
 
 If Git cannot verify the local Portless certificate, trust the Portless CA once in your shell startup file:
 
@@ -101,7 +54,7 @@ After the push, the Git Worker starts a Workflow that clones the Artifacts repo 
 
 ```bash
 git clone <artifacts-remote> /workspace/repo
-npx --yes @redwoodjs/agent-ci run --all
+npx --yes @redwoodjs/agent-ci run --workflow .github/workflows/ci.yml
 ```
 
 Wrangler may mint short-lived upload tokens while deploying static assets from workflow steps. The CI Worker keeps those Wrangler-generated tokens intact while replacing only the placeholder API token passed into the Sandbox.
@@ -111,17 +64,17 @@ Wrangler may mint short-lived upload tokens while deploying static assets from w
 Check everything:
 
 ```bash
-vp run check
+pnpm check
 ```
 
 Run tests:
 
 ```bash
-vp run test
+pnpm test
 ```
 
 Build app type checks:
 
 ```bash
-vp run build
+pnpm build
 ```

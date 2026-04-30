@@ -64,8 +64,8 @@ export class DeployWorkflow extends WorkflowEntrypoint<Env, DeployParams> {
           event.payload.runId,
           "agent-ci",
           sandboxName,
-          "cd /workspace/repo && npx --yes @redwoodjs/agent-ci run --all",
-          "$ npx --yes @redwoodjs/agent-ci run --all",
+          "cd /workspace/repo && npx --yes @redwoodjs/agent-ci run --workflow .github/workflows/ci.yml",
+          "$ npx --yes @redwoodjs/agent-ci run --workflow .github/workflows/ci.yml",
           [],
           {
             env: {

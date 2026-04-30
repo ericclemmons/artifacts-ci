@@ -7,25 +7,26 @@
 
 ## Tooling
 
-- Use Vite+ commands (`vp ...`) instead of direct `pnpm`, `npm`, `npx`, `vite`, or `vitest` for repo work.
-- Install/update deps with `vp install`; root `packageManager` is `pnpm@10.33.2` only for Vite+ to wrap.
-- Root `vp run dev` uses Portless monorepo mode to start only workspace packages with `dev` scripts, currently `apps/ci` and `apps/git`.
+- Use root `pnpm` scripts as the default entry points for repo work: `pnpm dev`, `pnpm lint`, `pnpm test`, `pnpm build`, `pnpm check`, and `pnpm smoke ...`.
+- Root scripts may delegate to Vite+ now and Turborepo later; treat that implementation detail as secondary to the root script contract.
+- Install/update deps with `pnpm install` unless a task explicitly needs Vite+ behavior.
+- Root `pnpm dev` uses Portless monorepo mode to start only workspace packages with `dev` scripts, currently `apps/ci` and `apps/git`.
 - Package `dev` scripts are raw `wrangler dev` commands; root Portless wraps them for `ci.localhost` and `git.localhost`.
-- Root verification scripts use Vite+ recursive workspace tasks: `vp run lint`, `vp run test`, `vp run build`, and `vp run check`.
-- Package scripts remain Vite+ native; focused package tasks use Vite Task names such as `vp run git#build`, `vp run ci#build`, `vp run ci#dev`, and `vp run git#dev`.
-- Tests currently live in `packages/utils`; use root `vp run test` or `vp run utils#test` for the focused package.
+- Root verification scripts currently delegate to Vite+ recursive workspace tasks, but callers should prefer the root `pnpm` scripts.
+- Package scripts may remain Vite+ native; focused package tasks can still use Vite Task names when needed.
+- Tests currently live in `packages/utils`; use root `pnpm test` by default.
 
 ## Workspace Shape
 
 - `apps/ci` is the Hono Worker at `https://ci.localhost`; it creates/reuses Cloudflare Artifacts repos and emits Git setup commands from `/repos/<name>.sh`.
 - `apps/git` is the Git smart-HTTP Worker at `https://git.localhost`; it proxies pushes to Artifacts and starts `DeployWorkflow`.
-- `apps/ci/src/DeployWorkflow.ts` runs the pushed repo in Cloudflare Sandbox: clone, then `npx --yes @redwoodjs/agent-ci run --all`.
+- `apps/ci/src/DeployWorkflow.ts` runs the pushed repo in Cloudflare Sandbox: clone, then `npx --yes @redwoodjs/agent-ci run --workflow .github/workflows/ci.yml`.
 - `packages/utils` is still mostly starter scaffolding; do not infer product architecture from its README metadata.
-- `examples/website` is a simple Vite example, not the main app and not part of `pnpm-workspace.yaml`.
+- `examples/vite-plus` is a simple Vite+ smoke fixture, not the main app and not part of `pnpm-workspace.yaml`.
 
 ## Cloudflare / Local Dev
 
-- Start both Workers with `vp run dev`; package-level `vp run ci#dev` and `vp run git#dev` run raw Wrangler dev servers without Portless orchestration.
+- Start both Workers with `pnpm dev`; package-level dev scripts run raw Wrangler dev servers without Portless orchestration.
 - Local dev uses Portless hostnames: `ci.localhost` maps to app port `8787`, `git.localhost` maps to app port `8788`.
 - `apps/ci/.env` must provide `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN`; the token needs Workers deploy permissions. Do not commit real `.env` values.
 - If Git rejects the local Portless cert during smoke tests, set `GIT_SSL_CAINFO="$HOME/.portless/ca.pem"` in the shell.

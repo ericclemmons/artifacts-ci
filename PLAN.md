@@ -38,18 +38,19 @@
 - Done: move primary product bindings and ownership to `apps/ci`: Artifacts repo setup, Workflows, Sandbox, RunLog Agent, KV checkout credentials, run UI, SSE streams, and deploy secrets.
 - Done: after Artifacts accepts a push, `apps/git` calls `env.CI.fetch(...)` to create the run, then streams run logs back from `apps/ci` to Git side-band while the connection is alive.
 - Make workspace "wrangler-y" with app-level Wrangler configs and dev scripts.
-- Root dev orchestration should use Portless monorepo mode; root verification should use Vite+ recursive tasks.
-- App/package scripts should use Vite+ commands such as `vp check`, `vp test`, `vp build`, `vp exec`, and `vp dlx` instead of package-manager-specific commands.
+- Root dev orchestration should use Portless monorepo mode; root `pnpm` scripts should be the stable entry points for dev, lint, test, build, check, and smoke workflows.
+- Root scripts may delegate to Vite+ now and Turborepo later; product docs and agent guidance should prefer `pnpm <script>` over direct `vp ...` or future `turbo ...` implementation commands.
 - Use Portless for local URLs: `https://git.localhost` and `https://ci.localhost`.
 - Keep existing `packages/utils`; do not add new packages unless tests/complexity warrant it.
 
 **Phase 0B: Workspace Orchestration**
 
-- Goal: make root workspace commands simple while app/package commands stay Vite+ native.
+- Goal: make root `pnpm` workspace commands simple while app/package commands can stay Vite+ native internally.
 - Use root `portless` for local dev so only workspace packages with `dev` scripts start.
-- Use Vite+ recursive root scripts for `build`, `lint`, `test`, and `check`.
-- Ensure `vp run dev` starts `apps/ci` and `apps/git` with stable hostnames and ports.
-- Ensure focused tasks remain available, e.g. `vp run ci#dev`, `vp run git#dev`, `vp run ci#build`, and `vp run git#build`.
+- Use root `pnpm build`, `pnpm lint`, `pnpm test`, and `pnpm check` as the public verification entry points.
+- Current root scripts delegate to Vite+ recursive tasks; revisit this when Turborepo returns.
+- Ensure `pnpm dev` starts `apps/ci` and `apps/git` with stable hostnames and ports.
+- Ensure focused tasks remain available, but do not make direct focused-task commands the default documentation path.
 - Update README command examples after the final root orchestration shape is chosen.
 
 **Phase 1: Git Worker + Side-Band**
@@ -129,7 +130,7 @@
 - Done: run npm-based CI in Sandbox: install, lint, test, and build.
 - Done: add outbound credential injection for Cloudflare API using Worker-side deploy secrets and Wrangler `CLOUDFLARE_API_BASE_URL` pointed at `http://cloudflare-api.sandbox/client/v4`.
 - Done: replace deploy placeholder with `npx --yes wrangler deploy` and no Workflow retries for the deploy step.
-- Done: replace hard-coded Sandbox install/lint/test/deploy sequence with `npx --yes @redwoodjs/agent-ci run --all`.
+- Done: replace hard-coded Sandbox install/lint/test/deploy sequence with `npx --yes @redwoodjs/agent-ci run --workflow .github/workflows/ci.yml`.
 - Done: preserve Wrangler-generated asset upload JWTs while replacing only the Sandbox placeholder API token.
 - Done: smoke validation curls `https://git-push-cf.ericclemmons.workers.dev` after deploy.
 - Deferred: deployment deletion is intentionally out of scope for now because Git ref-delete mapping is too dangerous.

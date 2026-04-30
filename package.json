@@ -9,6 +9,7 @@
     "dev": "portless",
     "lint": "vp run -r lint",
     "prepare": "vp config",
+    "smoke": "./scripts/smoke-test.sh $1",
     "test": "vp run -r test"
   },
   "devDependencies": {
@@ -18,5 +19,17 @@
   "engines": {
     "node": ">=22.12.0"
   },
-  "packageManager": "pnpm@10.33.2"
+  "packageManager": "pnpm@10.33.2",
+  "portless": {
+    "apps": {
+      "apps/ci": {
+        "name": "ci",
+        "appPort": 8787
+      },
+      "apps/git": {
+        "name": "git",
+        "appPort": 8788
+      }
+    }
+  }
 }
