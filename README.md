@@ -31,18 +31,16 @@ pnpm dev
 pnpm smoke examples/vite-plus
 ```
 
-The smoke script copies the example into a temporary directory, creates the first Git commit, configures the Cloudflare remote from `https://ci.localhost/repos/<package-name>.sh`, and pushes the fixture to Cloudflare.
+The smoke script copies the example into a temporary directory, creates the first Git commit, configures a timestamped Cloudflare remote, and pushes the fixture to Cloudflare.
 
 Expected output includes side-band status lines like:
 
 ```text
-remote: 📦 production/vite-plus-example
+remote: 📦 production/vite-plus-<timestamp>
 remote: 🗒️ commit <sha>
 remote: 🌐 https://ci.localhost/runs/<id>
 remote: $ npx --yes @redwoodjs/agent-ci run --workflow .github/workflows/ci.yml
 ```
-
-The repo name comes from the example's `package.json` `name` field. Set `SMOKE_KEEP=1` to keep the temporary workspace for debugging.
 
 If Git cannot verify the local Portless certificate, trust the Portless CA once in your shell startup file:
 
