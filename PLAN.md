@@ -4,7 +4,7 @@
 
 - Existing Vite+ monorepo is the starting point.
 - Use Vite+ (`vp`) inside apps and packages for package management, checks, tests, builds, and one-off binaries.
-- Use Turborepo for root workspace orchestration, especially `turbo dev` and multi-project task fanout.
+- Use Portless monorepo mode for local Worker dev orchestration.
 - Primary demo: `git push <environment>`, not UI.
 - Backing repo is Artifacts; enhanced remote points at our Git Worker.
 - Default namespace today: `production`, but this should not be treated as the deployment environment model.
@@ -38,17 +38,17 @@
 - Done: move primary product bindings and ownership to `apps/ci`: Artifacts repo setup, Workflows, Sandbox, RunLog Agent, KV checkout credentials, run UI, SSE streams, and deploy secrets.
 - Done: after Artifacts accepts a push, `apps/git` calls `env.CI.fetch(...)` to create the run, then streams run logs back from `apps/ci` to Git side-band while the connection is alive.
 - Make workspace "wrangler-y" with app-level Wrangler configs and dev scripts.
-- Root scripts should delegate workspace orchestration to Turborepo.
+- Root dev orchestration should use Portless monorepo mode; root verification should use Vite+ recursive tasks.
 - App/package scripts should use Vite+ commands such as `vp check`, `vp test`, `vp build`, `vp exec`, and `vp dlx` instead of package-manager-specific commands.
 - Use Portless for local URLs: `https://git.localhost` and `https://ci.localhost`.
 - Keep existing `packages/utils`; do not add new packages unless tests/complexity warrant it.
 
-**Phase 0B: Turborepo Orchestration**
+**Phase 0B: Workspace Orchestration**
 
-- Goal: make root workspace commands delegate to Turborepo while app/package commands stay Vite+ native.
-- Add or verify `turbo.json` tasks for `dev`, `build`, `lint`, `test`, `check`, and `ready`.
-- Root scripts should call `turbo`/`vp run ... -r` consistently instead of hand-rolled workspace command chains.
-- Ensure `vp run dev` starts `apps/ci` and `apps/git` with clear task names/log output.
+- Goal: make root workspace commands simple while app/package commands stay Vite+ native.
+- Use root `portless` for local dev so only workspace packages with `dev` scripts start.
+- Use Vite+ recursive root scripts for `build`, `lint`, `test`, and `check`.
+- Ensure `vp run dev` starts `apps/ci` and `apps/git` with stable hostnames and ports.
 - Ensure focused tasks remain available, e.g. `vp run ci#dev`, `vp run git#dev`, `vp run ci#build`, and `vp run git#build`.
 - Update README command examples after the final root orchestration shape is chosen.
 

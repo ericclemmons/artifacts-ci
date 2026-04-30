@@ -4,8 +4,9 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "build": "vp build",
     "dev": "vp dev",
-    "build": "tsc && vp build",
+    "lint": "vp lint",
     "preview": "vp preview"
   },
   "devDependencies": {

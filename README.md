@@ -10,7 +10,7 @@ Start local development:
 pnpm dev
 ```
 
-This runs the workspace dev tasks through `vp run dev`. If you want separate logs, run `vp run ci#dev` and `vp run git#dev` in separate terminals.
+This runs the `ci` and `git` Workers through Portless monorepo mode. Package `dev` scripts are plain `wrangler dev` commands; run them directly if you do not need Portless hostnames.
 
 The local endpoints are:
 
@@ -59,10 +59,10 @@ curl -fsS https://git-push-cf.ericclemmons.workers.dev >/dev/null
 Expected output includes side-band status lines like:
 
 ```text
-remote: Cloudflare CI accepted push
-remote: repo production/git-push-cf-smoke-<timestamp>
-remote: run https://ci.localhost/runs/<id>
-remote: next: workflow trigger
+remote: 📦 production/git-push-cf-smoke-<timestamp>
+remote: 🗒️ commit <sha>
+remote: 🌐 https://ci.localhost/runs/<id>
+remote: $ npm install
 ```
 
 If Git cannot verify the local Portless certificate, trust the Portless CA once in your shell startup file:
@@ -78,7 +78,6 @@ git clone <artifacts-remote> /workspace/repo
 npm install
 npm run lint --if-present
 npm run test --if-present
-npm run build
 npx --yes wrangler deploy
 ```
 
@@ -86,21 +85,20 @@ Wrangler may mint short-lived upload tokens while deploying static assets. The G
 
 ## Checks
 
-Check everything is ready:
+Check everything:
 
 ```bash
-vp check
+vp run check
 ```
 
 Run tests:
 
 ```bash
-vp test
+vp run test
 ```
 
 Build app type checks:
 
 ```bash
-vp run git#build
-vp run ci#build
+vp run build
 ```

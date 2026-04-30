@@ -22,9 +22,10 @@
   },
   "scripts": {
     "build": "vp pack",
-    "dev": "vp pack --watch",
+    "lint": "vp lint",
     "test": "vp test",
     "typecheck": "tsc --noEmit",
+    "watch": "vp pack --watch",
     "release": "bumpp",
     "prepublishOnly": "pnpm run build"
   },
