@@ -1,5 +1,5 @@
 import { env } from "cloudflare:workers";
-import { encodeSideBandProgress } from "./gitProtocol";
+import { encodeSideBandProgress, getPushedCommitSha } from "./gitProtocol";
 import { appendRunLog, getRunLog } from "./runLog";
 
 const CI_BASE_URL = "https://ci.localhost";
@@ -9,6 +9,7 @@ export async function withPushProgress(
   response: Response,
   route: { namespace: string; repo: string; remote: string; token: string },
   supportsSideBand: boolean,
+  requestBody: ArrayBuffer | undefined,
 ) {
   const headers = new Headers(response.headers);
   const body = new Uint8Array(await response.arrayBuffer());
@@ -24,8 +25,10 @@ export async function withPushProgress(
   }
 
   const runId = crypto.randomUUID();
+  const commitSha = getPushedCommitSha(requestBody);
   await appendRunLog(runId, "Cloudflare CI accepted push");
   await appendRunLog(runId, `repo ${route.namespace}/${route.repo}`);
+  await appendRunLog(runId, `commit ${commitSha ?? "unknown"}`);
   await appendRunLog(runId, `run ${CI_BASE_URL}/runs/${runId}`);
 
   await env.DEPLOY_WORKFLOW.create({
@@ -36,6 +39,7 @@ export async function withPushProgress(
       repo: route.repo,
       artifactsRemote: route.remote,
       artifactsToken: route.token,
+      commitSha,
       pushedAt: new Date().toISOString(),
     },
   });

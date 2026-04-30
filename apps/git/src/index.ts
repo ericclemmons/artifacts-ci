@@ -1,6 +1,6 @@
 export { DeployWorkflow } from "./DeployWorkflow";
 export { RunLog } from "./RunLog";
-export { Sandbox } from "@cloudflare/sandbox";
+export { ContainerProxy, Sandbox } from "./Sandbox";
 
 import { getAgentByName } from "agents";
 import { getUpstream, withArtifactsAuth } from "./utils/artifactsProxy";
@@ -64,6 +64,7 @@ export default {
         upstreamResponse,
         { ...route, repo: repoName, remote: upstream.remote, token: upstream.token },
         supportsSideBand,
+        body,
       );
     }
 

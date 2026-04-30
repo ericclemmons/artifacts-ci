@@ -17,11 +17,12 @@
 - `apps/git` proxies Git smart HTTP to Artifacts using local Git config headers.
 - `git push cloudflare` has been validated locally with side-band output.
 - Accepted pushes create a durable Workflow instance and print a run URL.
+- Accepted pushes parse the pushed commit SHA from `git-receive-pack` and run CI in a SHA-scoped Sandbox.
 - Workflow is scaffolded into checkout/install/build/deploy steps with `ReadableStream`-friendly placeholders for future Sandbox output.
 - Sandbox SDK is wired into `apps/git` with the minimal container Dockerfile and Worker binding.
-- Sandbox CI echo is statically validated, and Wrangler can build the Sandbox container with Docker.
+- Sandbox CI checkout/install/lint/test/build is validated locally, and Wrangler can build the Sandbox container with Docker.
 - Local `ci` and `git` dev Workers start cleanly after stopping stale `portless` wrappers; no `--force` script change is needed right now.
-- Local Sandbox runtime is being revalidated on Docker Desktop without the arm64 `proxy-everything` image override from cloudflare/sandbox-sdk#522.
+- Local Sandbox runtime is validated on Docker Desktop without the arm64 `proxy-everything` image override from cloudflare/sandbox-sdk#522.
 - Push-time Workflow log streaming is implemented through a per-run Agent and SSE endpoint.
 
 **Monorepo Changes**
@@ -74,21 +75,25 @@
 **Phase 4: Sandbox CI Echo**
 
 - Done: add Sandbox SDK dependency, minimal `Dockerfile`, container binding, Agent/Durable Object binding, and migration.
-- Done: Workflow uses Sandbox SDK + Artifacts pattern to clone the pushed repo.
-- Done: assume `pnpm`; no package-manager detection.
-- Current validation mode: stream the planned `git clone` command, then throw `NonRetryableError("checkout: Not implemented")` so log streaming can be validated quickly without retrying unfinished CI steps.
+- Done: Workflow clones through a static virtual Sandbox remote and Worker-side outbound handler: `http://artifacts.sandbox/<namespace>/<repo>.git`.
+- Done: short-lived Artifacts checkout credentials are stored in KV for the outbound handler so the Sandbox never sees the token.
+- Done: CI uses npm commands initially: `npm install`, `npm run lint --if-present`, `npm run test --if-present`, and `npm run build`.
+- Current deploy mode: throw `NonRetryableError("deploy: Not implemented")` after CI so CD can be implemented separately.
 - Done: stream available command output to git side-band while connection is alive.
 - Done: capture run log output in a per-run Agent with `/runs/:id/stream` SSE replay.
 - Done: `wrangler deploy --dry-run` for `apps/git` builds the Sandbox container when Docker is running.
 - Done: fresh `ci.localhost` and `git.localhost` dev processes are healthy, and `git push cloudflare` still succeeds from a clean process state.
-- Revalidating: local Sandbox Workflow execution without `MINIFLARE_CONTAINER_EGRESS_IMAGE`, using Docker Desktop.
-- Deferred: package-backed push validates real `git clone`, `pnpm install`, `pnpm build`, and `pnpx wrangler --version` all exit 0.
+- Done: local Sandbox Workflow execution without `MINIFLARE_CONTAINER_EGRESS_IMAGE`, using Docker Desktop.
+- Deferred: package-backed push validates real `pnpx wrangler deploy` and returns the deployed URL.
 
-**Phase 5: Real Static Deploy**
+**Phase 5: CI, then CD**
 
+- Done: make checkout real with KV-backed Worker-side Artifacts credential injection.
+- Done: parse pushed commit SHA from receive-pack and checkout that exact SHA in the Sandbox.
+- Done: run npm-based CI in Sandbox: install, lint, test, and build.
 - Add outbound credential injection for `api.cloudflare.com`.
 - Store parent deploy token with `wrangler secret put`.
-- Replace echo with `pnpx wrangler deploy`.
+- Replace deploy placeholder with `pnpx wrangler deploy`.
 - Ensure Wrangler's deployed URL is visible in push output for user/agent.
 
 **Phase 6: Logs Decision**

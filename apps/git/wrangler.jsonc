@@ -7,6 +7,12 @@
   "observability": {
     "enabled": true,
   },
+  "kv_namespaces": [
+    {
+      "binding": "REPO_TOKENS",
+      "id": "git_push_cf_repo_tokens",
+    },
+  ],
   "containers": [
     {
       "class_name": "Sandbox",

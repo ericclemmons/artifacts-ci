@@ -63,11 +63,15 @@ If Git cannot verify the local Portless certificate, trust the Portless CA once 
 export GIT_SSL_CAINFO="$HOME/.portless/ca.pem"
 ```
 
-After the push, the Git Worker starts a Workflow and currently reports the first planned CI step as not implemented:
+After the push, the Git Worker starts a Workflow that clones the Artifacts repo into Sandbox and runs CI:
 
 ```bash
 git clone <artifacts-remote> /workspace/repo
-checkout not implemented
+npm install
+npm run lint --if-present
+npm run test --if-present
+npm run build
+deploy not implemented
 ```
 
 ## Checks

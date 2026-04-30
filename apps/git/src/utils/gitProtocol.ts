@@ -7,6 +7,20 @@ export function wantsSideBand(body: ArrayBuffer | undefined) {
   return text.includes(" side-band") || text.includes(" side-band-64k");
 }
 
+export function getPushedCommitSha(body: ArrayBuffer | undefined) {
+  if (!body) {
+    return null;
+  }
+
+  const updates = parseReceivePackUpdates(new Uint8Array(body));
+  const branchUpdate = updates.find(
+    (update) => update.ref.startsWith("refs/heads/") && !isZeroSha(update.newSha),
+  );
+  const update = branchUpdate ?? updates.find((update) => !isZeroSha(update.newSha));
+
+  return update?.newSha ?? null;
+}
+
 export function encodeSideBandProgress(lines: string[]) {
   const encoder = new TextEncoder();
   const chunks = lines.map((line) =>
@@ -30,6 +44,53 @@ function pktLine(payload: Uint8Array) {
   const length = payload.byteLength + 4;
   const header = encoder.encode(length.toString(16).padStart(4, "0"));
   return concatBytes(header, payload);
+}
+
+function parseReceivePackUpdates(body: Uint8Array) {
+  const decoder = new TextDecoder();
+  const updates: Array<{ oldSha: string; newSha: string; ref: string }> = [];
+  let offset = 0;
+
+  while (offset + 4 <= body.byteLength) {
+    const lengthText = decoder.decode(body.slice(offset, offset + 4));
+    const length = Number.parseInt(lengthText, 16);
+
+    if (!Number.isFinite(length) || length < 0) {
+      break;
+    }
+
+    offset += 4;
+
+    if (length === 0) {
+      continue;
+    }
+
+    const payloadLength = length - 4;
+
+    if (payloadLength < 0 || offset + payloadLength > body.byteLength) {
+      break;
+    }
+
+    const line = decoder.decode(body.slice(offset, offset + payloadLength)).trimEnd();
+    offset += payloadLength;
+
+    const command = line.split("\0", 1)[0];
+    const [oldSha, newSha, ref] = command.split(" ");
+
+    if (isSha(oldSha) && isSha(newSha) && ref) {
+      updates.push({ oldSha, newSha, ref });
+    }
+  }
+
+  return updates;
+}
+
+function isSha(value: string | undefined) {
+  return !!value && /^[0-9a-f]{40}$/i.test(value);
+}
+
+function isZeroSha(value: string) {
+  return /^0{40}$/.test(value);
 }
 
 function endsWith(value: Uint8Array, suffix: Uint8Array) {
