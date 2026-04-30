@@ -5,10 +5,12 @@
 - Existing Vite+ monorepo is the starting point.
 - Use Vite+ (`vp`) inside apps and packages for package management, checks, tests, builds, and one-off binaries.
 - Use Turborepo for root workspace orchestration, especially `turbo dev` and multi-project task fanout.
-- Primary demo: `git push cloudflare`, not UI.
+- Primary demo: `git push <environment>`, not UI.
 - Backing repo is Artifacts; enhanced remote points at our Git Worker.
-- Default namespace: `production`.
-- Git remote shape: `https://git.localhost/production/<repo>.git`.
+- Default namespace today: `production`, but this should not be treated as the deployment environment model.
+- Current Git remote shape: `https://git.localhost/production/<repo>.git`.
+- Open direction: model deployment environments explicitly so remotes can be `production`, `preview`, `staging`, etc., instead of a generic `cloudflare` remote.
+- Decision: environment is not the same as Artifacts namespace; one repo exists everywhere, and environment changes deploy behavior such as `wrangler deploy --env <environment>`.
 - Two-worker split: `apps/git` is the thin Git push facade; `apps/ci` is the primary application.
 - Keep helpers local in app `utils` until complexity justifies package extraction.
 - No DB initially; defer R2/Agents/UI until push path works.
@@ -18,7 +20,7 @@
 - `apps/ci` creates or reuses Artifacts repos and returns setup commands.
 - `apps/git` proxies Git smart HTTP to Artifacts using local Git config headers.
 - Done: Workflows, Sandbox, RunLog Agent, KV checkout credentials, and deploy secrets moved to `apps/ci`; `apps/git` talks to CI through a Service Binding.
-- `git push cloudflare` has been validated locally with side-band output.
+- `git push cloudflare` has been validated locally with side-band output, but environment-specific remotes should replace or wrap this before productizing.
 - Accepted pushes create a durable Workflow instance and print a run URL.
 - Accepted pushes parse the pushed commit SHA from `git-receive-pack` and run CI in a SHA-scoped Sandbox.
 - Workflow is scaffolded into checkout/install/build/deploy steps with `ReadableStream`-friendly placeholders for future Sandbox output.
@@ -41,6 +43,15 @@
 - Use Portless for local URLs: `https://git.localhost` and `https://ci.localhost`.
 - Keep existing `packages/utils`; do not add new packages unless tests/complexity warrant it.
 
+**Phase 0B: Turborepo Orchestration**
+
+- Goal: make root workspace commands delegate to Turborepo while app/package commands stay Vite+ native.
+- Add or verify `turbo.json` tasks for `dev`, `build`, `lint`, `test`, `check`, and `ready`.
+- Root scripts should call `turbo`/`vp run ... -r` consistently instead of hand-rolled workspace command chains.
+- Ensure `vp run dev` starts `apps/ci` and `apps/git` with clear task names/log output.
+- Ensure focused tasks remain available, e.g. `vp run ci#dev`, `vp run git#dev`, `vp run ci#build`, and `vp run git#build`.
+- Update README command examples after the final root orchestration shape is chosen.
+
 **Phase 1: Git Worker + Side-Band**
 
 - Done: implement receive-pack discovery and push routes in `apps/git`.
@@ -58,12 +69,29 @@
 - Done: add Artifacts remote header: `git config --local --add http.https://git.localhost/.extraHeader "X-Artifacts-Remote: <ARTIFACTS_REMOTE>"`.
 - Done: configure no-refspec UX: `git config --local remote.cloudflare.push HEAD`.
 - Done: validate plain `git push cloudflare` on current Git.
+- Next: decide whether setup should create environment remotes like `production`, `preview`, and `staging` instead of `cloudflare`.
 
 **Phase 1B: isomorphic-git Spike**
 
 - Use Cloudflare's isomorphic-git example as reference, not a hard requirement.
 - Test if it helps Worker-side pushes for notes/log artifacts.
 - Keep smart-HTTP proxy primary unless isomorphic-git can cleanly help external push handling.
+
+**Phase 1C: Environment Remotes**
+
+- Goal: make environments first-class in the Git UX.
+- Current UX: one remote named `cloudflare` points at `/production/<repo>.git` and pushes `HEAD`.
+- Candidate UX A: create remotes named by environment, e.g. `git push production`, `git push staging`, `git push preview`.
+- Candidate UX B: keep remote `cloudflare`, but use refspecs or branch mapping, e.g. `git push cloudflare main:production`, `git push cloudflare branch:preview`.
+- Candidate UX C: create both, with `cloudflare` as an alias/default and environment remotes for explicit deploys.
+- Prefer candidate UX A unless Git remote-name conflicts or multi-provider ergonomics argue otherwise; it matches how users think about deploy targets.
+- Decision: Artifacts namespace should not equal environment. Keep repo storage independent from deployment target.
+- Environment should be stored in CI run metadata and passed to deploy command construction.
+- Production deploy command remains `wrangler deploy` or equivalent default-env command.
+- Non-production deploy command should become `wrangler deploy --env <environment>` or the project-specific equivalent.
+- Decide if `preview` is a shared environment, per-branch environment, or per-push ephemeral deployment.
+- Setup script should eventually emit environment-aware commands, including `remote.<environment>.push HEAD` for no-refspec pushes.
+- Run metadata should include `environment` separately from `namespace` so UI, logs, Access policies, and deploy behavior can evolve independently.
 
 **Phase 2: Repo Creation**
 
@@ -132,6 +160,17 @@
 - Reference: https://developers.cloudflare.com/workers/platform/deploy-buttons/
 - Keep Deploy Button support separate from push-driven `npx --yes wrangler deploy` inside Sandbox.
 
+**Phase 7B: GitHub Actions Example**
+
+- Add a GitHub Actions example for repos that want hosted CI alongside or before push-driven deploys.
+- Reference Vite+ CI guidance: https://viteplus.dev/guide/ci#github-actions
+- Use `redwoodjs/agent-ci` as the example CI action: https://github.com/redwoodjs/agent-ci
+- Treat `agent-ci` as an alternate execution backend, not duplicate work: GitHub Actions can replace parts of the default Sandbox Workflow such as lint, test, and build.
+- Likely also support GitHub Actions replacing the Sandbox `wrangler deploy` step when credentials and environment targeting are configured there.
+- Show a minimal workflow that installs dependencies, runs checks/tests/build, and optionally deploys or reports status back through this project.
+- Decide later how `apps/ci` represents externally executed steps in run logs and status, e.g. linked GitHub check runs vs. mirrored log output.
+- Keep this as documentation/example scope unless product requirements demand first-class GitHub App or OAuth integration.
+
 **Phase 8: Access/Auth Later**
 
 - Lock `apps/ci` behind Cloudflare Access when deployed.
@@ -153,9 +192,13 @@
 - J: `/runs/:id/stream` replays live Workflow/Sandbox output as SSE.
 - K: `apps/git` can trigger CI runs through `apps/ci` without owning Workflow/Sandbox/RunLog bindings.
 - L: deployed `apps/ci` is protected by Cloudflare Access while `git push cloudflare` still works through `apps/git`.
+- M: setup supports environment-aware Git remotes or an explicit equivalent for `production`, `staging`, and `preview`.
 
 **Unresolved Questions**
 
 - Can Git + Cloudflare Access token headers make a single protected worker viable?
+- Should the default Git remote be named `production` instead of `cloudflare`?
+- How should environment remotes map to one shared Artifacts repo URL without conflating storage namespace and deploy target?
+- Is `preview` one shared remote or dynamically generated per branch/push?
 - How much run log output can the per-run Agent hold before R2 or a SQL-backed message table becomes necessary?
 - Should `git push` wait for the full CI run by default, or switch to a shorter attach window plus URL for longer deploys?
