@@ -1,10 +1,10 @@
 import { getSandbox, parseSSEStream } from "@cloudflare/sandbox";
-import type { ExecEvent } from "@cloudflare/sandbox";
+import type { ExecEvent, StreamOptions } from "@cloudflare/sandbox";
 import { env } from "cloudflare:workers";
 import { WorkflowEntrypoint } from "cloudflare:workers";
 import type { WorkflowEvent, WorkflowStep } from "cloudflare:workers";
-import { NonRetryableError } from "cloudflare:workflows";
-import { putArtifactsGitParams } from "./Sandbox";
+import { deleteArtifactsGitParams, putArtifactsGitParams } from "./Sandbox";
+import { envPlaceholders } from "./utils/proxyCloudflareApiRequest";
 import { appendRunLog, closeRunLog } from "./utils/runLog";
 
 type DeployParams = {
@@ -44,12 +44,16 @@ export class DeployWorkflow extends WorkflowEntrypoint<Env, DeployParams> {
         token: event.payload.artifactsToken,
       });
 
-      return runSandboxCommand(
+      const output = await runSandboxCommand(
         event.payload.runId,
         "checkout",
         sandboxName,
         getCheckoutCommand(cloneRemote, queued.commitSha),
       );
+
+      await deleteArtifactsGitParams(queued.namespace, queued.repo);
+
+      return output;
     });
 
     const install = await step.do("install dependencies", async () =>
@@ -88,8 +92,21 @@ export class DeployWorkflow extends WorkflowEntrypoint<Env, DeployParams> {
       ),
     );
 
-    const deploy = await step.do("deploy project", async () =>
-      notImplemented(event.payload.runId, "deploy", "pnpx wrangler --version"),
+    const deploy = await step.do("deploy project", { retries: { limit: 0, delay: 0 } }, async () =>
+      runSandboxCommand(
+        event.payload.runId,
+        "deploy",
+        sandboxName,
+        "cd /workspace/repo && npx --yes wrangler deploy",
+        [],
+        {
+          env: {
+            CLOUDFLARE_API_BASE_URL: "http://cloudflare-api.sandbox/client/v4",
+            CLOUDFLARE_ACCOUNT_ID: envPlaceholders.CLOUDFLARE_ACCOUNT_ID,
+            CLOUDFLARE_API_TOKEN: envPlaceholders.CLOUDFLARE_API_TOKEN,
+          },
+        },
+      ),
     );
 
     await closeRunLog(event.payload.runId);
@@ -115,12 +132,13 @@ async function runSandboxCommand(
   sandboxName: string,
   command: string,
   redactions: string[] = [],
+  options?: StreamOptions,
 ) {
   await appendRunLog(runId, `$ ${label}`);
 
   try {
     const sandbox = getSandbox(env.Sandbox, sandboxName);
-    const stream = await sandbox.execStream(command);
+    const stream = await sandbox.execStream(command, options);
     const output: string[] = [];
     let exitCode = 0;
 
@@ -152,15 +170,6 @@ async function runSandboxCommand(
     await closeRunLog(runId);
     throw error;
   }
-}
-
-async function notImplemented(runId: string, label: string, command: string) {
-  await appendRunLog(runId, `$ ${label}`);
-  await appendRunLog(runId, command);
-  await appendRunLog(runId, `${label} not implemented`);
-  await closeRunLog(runId);
-
-  throw new NonRetryableError(`${label}: Not implemented`);
 }
 
 function redact(value: string, redactions: string[]) {

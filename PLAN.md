@@ -3,6 +3,8 @@
 **Updated Direction**
 
 - Existing Vite+ monorepo is the starting point.
+- Use Vite+ (`vp`) inside apps and packages for package management, checks, tests, builds, and one-off binaries.
+- Use Turborepo for root workspace orchestration, especially `turbo dev` and multi-project task fanout.
 - Primary demo: `git push cloudflare`, not UI.
 - Backing repo is Artifacts; enhanced remote points at our Git Worker.
 - Default namespace: `production`.
@@ -30,6 +32,8 @@
 - Add `apps/git` as Wrangler Worker for Git smart HTTP.
 - Add `apps/ci` only as minimal repo/setup command generator.
 - Make workspace "wrangler-y" with app-level Wrangler configs and dev scripts.
+- Root scripts should delegate workspace orchestration to Turborepo.
+- App/package scripts should use Vite+ commands such as `vp check`, `vp test`, `vp build`, `vp exec`, and `vp dlx` instead of package-manager-specific commands.
 - Use Portless for local URLs: `https://git.localhost` and `https://ci.localhost`.
 - Keep existing `packages/utils`; do not add new packages unless tests/complexity warrant it.
 
@@ -91,19 +95,27 @@
 - Done: make checkout real with KV-backed Worker-side Artifacts credential injection.
 - Done: parse pushed commit SHA from receive-pack and checkout that exact SHA in the Sandbox.
 - Done: run npm-based CI in Sandbox: install, lint, test, and build.
-- Add outbound credential injection for `api.cloudflare.com`.
-- Store parent deploy token with `wrangler secret put`.
-- Replace deploy placeholder with `pnpx wrangler deploy`.
-- Ensure Wrangler's deployed URL is visible in push output for user/agent.
+- Done: add outbound credential injection for Cloudflare API using Worker-side deploy secrets and Wrangler `CLOUDFLARE_API_BASE_URL` pointed at `http://cloudflare-api.sandbox/client/v4`.
+- Done: replace deploy placeholder with `npx --yes wrangler deploy` and no Workflow retries for the deploy step.
+- Done: preserve Wrangler-generated asset upload JWTs while replacing only the Sandbox placeholder API token.
+- Next validation: restart Git Worker dev if needed and rerun the real deploy smoke push.
+- Next feature: support Git-native deletion, likely `git push cloudflare :main`, by mapping delete pushes to `wrangler delete`.
 
-**Phase 6: Logs Decision**
+**Phase 6: Runs UI and Logs**
 
-- First test Workflow `step.do()` ReadableStream output for larger Sandbox logs.
+- Add `https://ci.localhost/runs/:id` UI for live run logs.
+- The run UI should replay existing history on refresh, then stream new log events live, likely via SSE from the existing per-run Agent.
+- Keep all Workflow/Sandbox output in the run log stream so Git side-band and UI show the same events.
+- Explore ANSI color and emoji support in Git side-band and browser logs to make output livelier without breaking Git clients.
 - Tail Workers are observability/debug option, not product state initially.
-- Defer R2 or Agent broadcast until side-band + deploy work.
-- Later UI can use Agents SDK/useAgent for run status.
 
-**Phase 7: Access/Auth Later**
+**Phase 7: Cloudflare Deploy Button**
+
+- Add an official Cloudflare "Deploy to Cloudflare" button for onboarding/templates.
+- Reference: https://developers.cloudflare.com/workers/platform/deploy-buttons/
+- Keep Deploy Button support separate from push-driven `npx --yes wrangler deploy` inside Sandbox.
+
+**Phase 8: Access/Auth Later**
 
 - Lock `apps/ci` behind Cloudflare Access when deployed.
 - Keep `apps/git` separately pushable unless Git works cleanly with Access token headers.
@@ -120,7 +132,7 @@
 - F: Push creates durable Workflow exactly once.
 - G: Ctrl-C after Workflow creation does not stop run.
 - H: Sandbox clones Artifacts repo and runs pnpm commands.
-- I: `pnpx wrangler deploy` prints deployed URL with injected credentials.
+- I: `npx --yes wrangler deploy` prints deployed URL with injected credentials.
 - J: `/runs/:id/stream` replays live Workflow/Sandbox output as SSE.
 
 **Unresolved Questions**

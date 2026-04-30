@@ -7,6 +7,9 @@
   "observability": {
     "enabled": true,
   },
+  "secrets": {
+    "required": ["CLOUDFLARE_ACCOUNT_ID", "CLOUDFLARE_API_TOKEN"],
+  },
   "kv_namespaces": [
     {
       "binding": "REPO_TOKENS",

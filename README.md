@@ -17,14 +17,16 @@ The local endpoints are:
 - `https://ci.localhost` creates Artifacts repos and setup commands.
 - `https://git.localhost` accepts Git smart-HTTP pushes.
 
+`apps/git/.env` must include deploy credentials for the Sandbox `wrangler deploy` step. The token needs Workers deploy permissions for the account.
+
 ## Smoke Test
 
 This creates a throwaway Vite React app in `/tmp`, configures the Cloudflare Git remote, and pushes it.
 
 ```bash
 cd $(mktemp -d)
-vp create vite --no-interactive -- app --template react-ts --no-interactive
-cd app
+vp create vite --no-interactive -- git-push-cf --template react-ts --no-interactive
+cd git-push-cf
 ```
 
 Create the first commit. Vite scaffolding does not create one for us.
@@ -71,8 +73,10 @@ npm install
 npm run lint --if-present
 npm run test --if-present
 npm run build
-deploy not implemented
+npx --yes wrangler deploy
 ```
+
+Wrangler may mint short-lived upload tokens while deploying static assets. The Git Worker keeps those Wrangler-generated tokens intact while replacing only the placeholder API token passed into the Sandbox.
 
 ## Checks
 
