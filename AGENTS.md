@@ -1,88 +1,37 @@
-<!--VITE PLUS START-->
+# Agent Notes
 
-# Using Vite+, the Unified Toolchain for the Web
+## References
 
-This project is using Vite+, a unified toolchain built on top of Vite, Rolldown, Vitest, tsdown, Oxlint, Oxfmt, and Vite Task. Vite+ wraps runtime management, package management, and frontend tooling in a single global CLI called `vp`. Vite+ is distinct from Vite, but it invokes Vite through `vp dev` and `vp build`.
+- Read `README.md` for current dev, smoke-test, and verification commands before running local flows.
+- Read `PLAN.md` for product direction, completed phases, deferred scope, and unresolved design questions; do not treat it as command source of truth when code/config disagree.
 
-## Vite+ Workflow
+## Tooling
 
-`vp` is a global binary that handles the full development lifecycle. Run `vp help` to print a list of commands and `vp <command> --help` for information about a specific command.
+- Use Vite+ commands (`vp ...`) instead of direct `pnpm`, `npm`, `npx`, `vite`, or `vitest` for repo work.
+- Install/update deps with `vp install`; root `packageManager` is `pnpm@10.33.2` only for Vite+ to wrap.
+- Root `vp check` runs format, lint, and type-aware TypeScript checks; `vite.config.ts` enables type-aware linting.
+- Full readiness is `vp run ready`: `vp fmt && vp lint && vp run test -r && vp run build -r`.
+- Run recursive workspace tasks with `vp run <script> -r`; focused package tasks use Vite Task names such as `vp run git#build`, `vp run ci#build`, `vp run ci#dev`, and `vp run git#dev`.
+- Tests currently live in `packages/utils`; use `vp test` generally or `vp run test -r` to run package test scripts.
 
-### Start
+## Workspace Shape
 
-- create - Create a new project from a template
-- migrate - Migrate an existing project to Vite+
-- config - Configure hooks and agent integration
-- staged - Run linters on staged files
-- install (`i`) - Install dependencies
-- env - Manage Node.js versions
+- `apps/ci` is the Hono Worker at `https://ci.localhost`; it creates/reuses Cloudflare Artifacts repos and emits Git setup commands from `/repos/<name>.sh`.
+- `apps/git` is the Git smart-HTTP Worker at `https://git.localhost`; it proxies pushes to Artifacts and starts `DeployWorkflow`.
+- `apps/git/src/DeployWorkflow.ts` runs the pushed repo in Cloudflare Sandbox: clone, `npm install`, optional `npm run lint`, optional `npm run test`, required `npm run build`, then `npx --yes wrangler deploy`.
+- `packages/utils` is still mostly starter scaffolding; do not infer product architecture from its README metadata.
+- `examples/website` is a simple Vite example, not the main app.
 
-### Develop
+## Cloudflare / Local Dev
 
-- dev - Run the development server
-- check - Run format, lint, and TypeScript type checks
-- lint - Lint code
-- fmt - Format code
-- test - Run tests
+- Start both Workers with `vp run dev`; for separate logs use `vp run ci#dev` and `vp run git#dev` in separate terminals.
+- Local dev uses Portless hostnames: `ci.localhost` maps to app port `8787`, `git.localhost` maps to app port `8788`.
+- `apps/git/.env` must provide `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN`; the token needs Workers deploy permissions. Do not commit real `.env` values.
+- If Git rejects the local Portless cert during smoke tests, set `GIT_SSL_CAINFO="$HOME/.portless/ca.pem"` in the shell.
+- The Git Worker only accepts the `production` namespace in remotes like `https://git.localhost/production/<repo>.git`.
 
-### Execute
+## Generated / Config Files
 
-- run - Run monorepo tasks
-- exec - Execute a command from local `node_modules/.bin`
-- dlx - Execute a package binary without installing it as a dependency
-- cache - Manage the task cache
-
-### Build
-
-- build - Build for production
-- pack - Build libraries
-- preview - Preview production build
-
-### Manage Dependencies
-
-Vite+ automatically detects and wraps the underlying package manager such as pnpm, npm, or Yarn through the `packageManager` field in `package.json` or package manager-specific lockfiles.
-
-- add - Add packages to dependencies
-- remove (`rm`, `un`, `uninstall`) - Remove packages from dependencies
-- update (`up`) - Update packages to latest versions
-- dedupe - Deduplicate dependencies
-- outdated - Check for outdated packages
-- list (`ls`) - List installed packages
-- why (`explain`) - Show why a package is installed
-- info (`view`, `show`) - View package information from the registry
-- link (`ln`) / unlink - Manage local package links
-- pm - Forward a command to the package manager
-
-### Maintain
-
-- upgrade - Update `vp` itself to the latest version
-
-These commands map to their corresponding tools. For example, `vp dev --port 3000` runs Vite's dev server and works the same as Vite. `vp test` runs JavaScript tests through the bundled Vitest. The version of all tools can be checked using `vp --version`. This is useful when researching documentation, features, and bugs.
-
-## Common Pitfalls
-
-- **Using the package manager directly:** Do not use pnpm, npm, or Yarn directly. Vite+ can handle all package manager operations.
-- **Always use Vite commands to run tools:** Don't attempt to run `vp vitest` or `vp oxlint`. They do not exist. Use `vp test` and `vp lint` instead.
-- **Running scripts:** Vite+ built-in commands (`vp dev`, `vp build`, `vp test`, etc.) always run the Vite+ built-in tool, not any `package.json` script of the same name. To run a custom script that shares a name with a built-in command, use `vp run <script>`. For example, if you have a custom `dev` script that runs multiple services concurrently, run it with `vp run dev`, not `vp dev` (which always starts Vite's dev server).
-- **Do not install Vitest, Oxlint, Oxfmt, or tsdown directly:** Vite+ wraps these tools. They must not be installed directly. You cannot upgrade these tools by installing their latest versions. Always use Vite+ commands.
-- **Use Vite+ wrappers for one-off binaries:** Use `vp dlx` instead of package-manager-specific `dlx`/`npx` commands.
-- **Import JavaScript modules from `vite-plus`:** Instead of importing from `vite` or `vitest`, all modules should be imported from the project's `vite-plus` dependency. For example, `import { defineConfig } from 'vite-plus';` or `import { expect, test, vi } from 'vite-plus/test';`. You must not install `vitest` to import test utilities.
-- **Type-Aware Linting:** There is no need to install `oxlint-tsgolint`, `vp lint --type-aware` works out of the box.
-
-## CI Integration
-
-For GitHub Actions, consider using [`voidzero-dev/setup-vp`](https://github.com/voidzero-dev/setup-vp) to replace separate `actions/setup-node`, package-manager setup, cache, and install steps with a single action.
-
-```yaml
-- uses: voidzero-dev/setup-vp@v1
-  with:
-    cache: true
-- run: vp check
-- run: vp test
-```
-
-## Review Checklist for Agents
-
-- [ ] Run `vp install` after pulling remote changes and before getting started.
-- [ ] Run `vp check` and `vp test` to validate changes.
-<!--VITE PLUS END-->
+- `apps/*/worker-configuration.d.ts` are generated by Wrangler (`wrangler types`); avoid hand-editing unless intentionally refreshing generated types.
+- Wrangler entrypoints are `apps/ci/src/index.ts` and `apps/git/src/index.ts`; bindings, Durable Objects, Workflows, KV, Artifacts, and Sandbox container config live in each app's `wrangler.jsonc`.
+- `apps/git/Dockerfile` pins the Sandbox image to `cloudflare/sandbox:0.9.2`; keep it aligned with `@cloudflare/sandbox` in the workspace catalog.
