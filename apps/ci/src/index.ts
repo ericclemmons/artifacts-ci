@@ -137,13 +137,15 @@ function renderRunPage(runId: string) {
         overflow: auto;
         border: 1px solid rgb(148 163 184 / 0.18);
         border-radius: 1rem;
-        padding: 1rem;
-        background: rgb(2 6 23 / 0.82);
+        padding: 0.9rem 0;
+        background:
+          linear-gradient(180deg, rgb(15 23 42 / 0.72), rgb(2 6 23 / 0.92)),
+          rgb(2 6 23);
         box-shadow: 0 1.5rem 5rem rgb(0 0 0 / 0.35);
         color: #dbeafe;
         font-size: 0.875rem;
-        line-height: 1.55;
-        white-space: pre-wrap;
+        line-height: 1.5;
+        white-space: pre;
       }
 
       .empty {
@@ -156,6 +158,47 @@ function renderRunPage(runId: string) {
 
       .error {
         color: #fca5a5;
+      }
+
+      .line {
+        display: block;
+        padding: 0 1rem;
+      }
+
+      .line:hover {
+        background: rgb(148 163 184 / 0.08);
+      }
+
+      .step {
+        margin: 0.6rem 0 0.25rem;
+        padding-block: 0.35rem;
+        background: rgb(37 99 235 / 0.12);
+        color: #bfdbfe;
+        font-weight: 700;
+        letter-spacing: 0.01em;
+      }
+
+      .meta-line {
+        color: #93c5fd;
+      }
+
+      .muted-line {
+        color: #7c8da5;
+      }
+
+      .success-line {
+        color: #bbf7d0;
+      }
+
+      .error-line {
+        color: #fecaca;
+      }
+
+      a {
+        color: #bae6fd;
+        text-decoration: underline;
+        text-decoration-color: rgb(186 230 253 / 0.35);
+        text-underline-offset: 0.2em;
       }
     </style>
   </head>
@@ -187,15 +230,17 @@ function renderRunPage(runId: string) {
               break;
             }
 
-            wroteLog = true;
-            write(`${escapeHtml(event.data)}\n`);
+            for (const line of splitLines(event.data)) {
+              wroteLog = true;
+              write(renderLogLine(line));
+            }
           }
 
           if (!wroteLog) {
             write(`<span class="empty">No logs received.</span>\n`);
           }
 
-          write(`<span class="done">Run stream closed.</span>\n`);
+          write(`<span class="line done">Run stream closed.</span>\n`);
         }
       } catch (error) {
         write(
@@ -219,6 +264,59 @@ function escapeHtml(value: string) {
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;");
 }
+
+function renderLogLine(value: string) {
+  const line = stripAnsi(value);
+  const classes = ["line", getLineClass(line)].filter(Boolean).join(" ");
+  return `<span class="${classes}">${linkify(escapeHtml(line))}</span>\n`;
+}
+
+function getLineClass(line: string) {
+  if (line.startsWith("$ ")) {
+    return "step";
+  }
+
+  if (line.includes(" failed") || line.includes("failed:")) {
+    return "error-line";
+  }
+
+  if (line.endsWith(" completed") || line === "Cloudflare CI accepted push") {
+    return "success-line";
+  }
+
+  if (
+    line.startsWith("repo ") ||
+    line.startsWith("commit ") ||
+    line.startsWith("run ") ||
+    line.startsWith("artifacts remote ") ||
+    line === "workflow trigger accepted"
+  ) {
+    return "meta-line";
+  }
+
+  if (line.startsWith("npm http fetch") || line.startsWith("npm info ")) {
+    return "muted-line";
+  }
+
+  return "";
+}
+
+function linkify(value: string) {
+  return value.replace(
+    /https:\/\/[^\s<]+/g,
+    (url) => `<a href="${url}" rel="noreferrer">${url}</a>`,
+  );
+}
+
+function splitLines(value: string) {
+  return value.split(/\r?\n/).filter(Boolean);
+}
+
+function stripAnsi(value: string) {
+  return value.replace(ansiPattern, "");
+}
+
+const ansiPattern = new RegExp(`${String.fromCharCode(27)}\\[[0-9;]*m`, "g");
 
 async function* readServerSentEvents(body: ReadableStream<Uint8Array> | null) {
   if (!body) {

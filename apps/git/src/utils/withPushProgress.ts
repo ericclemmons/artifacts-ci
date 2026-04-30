@@ -76,7 +76,9 @@ function streamPushProgress(runId: string, gitStatus: Uint8Array) {
 
       const timeout = setTimeout(() => {
         if (!closed) {
-          controller.enqueue(encodeSideBandProgress(["Cloudflare CI stream timed out"]));
+          controller.enqueue(
+            encodeSideBandProgress([formatPushLine("Cloudflare CI stream timed out")]),
+          );
           finish();
         }
       }, PUSH_STREAM_TIMEOUT_MS);
@@ -94,7 +96,7 @@ function streamPushProgress(runId: string, gitStatus: Uint8Array) {
               break;
             }
 
-            controller.enqueue(encodeSideBandProgress([line]));
+            controller.enqueue(encodeSideBandProgress([formatPushLine(line)]));
           }
         }
 
@@ -104,7 +106,9 @@ function streamPushProgress(runId: string, gitStatus: Uint8Array) {
         clearTimeout(timeout);
         if (!closed) {
           controller.enqueue(
-            encodeSideBandProgress([`Cloudflare CI stream failed: ${getErrorMessage(error)}`]),
+            encodeSideBandProgress([
+              formatPushLine(`Cloudflare CI stream failed: ${getErrorMessage(error)}`),
+            ]),
           );
           finish();
         }
@@ -162,6 +166,49 @@ function parseServerSentEvent(value: string) {
 function splitLines(value: string) {
   return value.split(/\r?\n/).filter(Boolean);
 }
+
+function formatPushLine(line: string) {
+  if (line.startsWith("$ ")) {
+    return `${ansi.bold}${ansi.blue}${line}${ansi.reset}`;
+  }
+
+  if (line.includes(" failed") || line.includes("failed:")) {
+    return `${ansi.bold}${ansi.red}${line}${ansi.reset}`;
+  }
+
+  if (line.endsWith(" completed") || line === "Cloudflare CI accepted push") {
+    return `${ansi.green}${line}${ansi.reset}`;
+  }
+
+  if (line.startsWith("run https://")) {
+    return `${ansi.cyan}${line}${ansi.reset}`;
+  }
+
+  if (
+    line.startsWith("repo ") ||
+    line.startsWith("commit ") ||
+    line.startsWith("artifacts remote ") ||
+    line === "workflow trigger accepted"
+  ) {
+    return `${ansi.dim}${line}${ansi.reset}`;
+  }
+
+  if (line.startsWith("npm http fetch") || line.startsWith("npm info ")) {
+    return `${ansi.dim}${line}${ansi.reset}`;
+  }
+
+  return line;
+}
+
+const ansi = {
+  reset: "\x1b[0m",
+  bold: "\x1b[1m",
+  dim: "\x1b[2m",
+  red: "\x1b[31m",
+  green: "\x1b[32m",
+  blue: "\x1b[34m",
+  cyan: "\x1b[36m",
+};
 
 function getErrorMessage(error: unknown) {
   return error instanceof Error ? error.message : "unknown error";
