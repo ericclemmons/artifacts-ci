@@ -26,7 +26,7 @@
 
 - Start both Workers with `vp run dev`; for separate logs use `vp run ci#dev` and `vp run git#dev` in separate terminals.
 - Local dev uses Portless hostnames: `ci.localhost` maps to app port `8787`, `git.localhost` maps to app port `8788`.
-- `apps/git/.env` must provide `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN`; the token needs Workers deploy permissions. Do not commit real `.env` values.
+- `apps/ci/.env` must provide `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN`; the token needs Workers deploy permissions. Do not commit real `.env` values.
 - If Git rejects the local Portless cert during smoke tests, set `GIT_SSL_CAINFO="$HOME/.portless/ca.pem"` in the shell.
 - The Git Worker only accepts the `production` namespace in remotes like `https://git.localhost/production/<repo>.git`.
 

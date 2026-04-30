@@ -9,7 +9,7 @@
 - Backing repo is Artifacts; enhanced remote points at our Git Worker.
 - Default namespace: `production`.
 - Git remote shape: `https://git.localhost/production/<repo>.git`.
-- Prefer two workers for clarity: `apps/git` and `apps/ci`.
+- Two-worker split: `apps/git` is the thin Git push facade; `apps/ci` is the primary application.
 - Keep helpers local in app `utils` until complexity justifies package extraction.
 - No DB initially; defer R2/Agents/UI until push path works.
 
@@ -17,6 +17,7 @@
 
 - `apps/ci` creates or reuses Artifacts repos and returns setup commands.
 - `apps/git` proxies Git smart HTTP to Artifacts using local Git config headers.
+- Done: Workflows, Sandbox, RunLog Agent, KV checkout credentials, and deploy secrets moved to `apps/ci`; `apps/git` talks to CI through a Service Binding.
 - `git push cloudflare` has been validated locally with side-band output.
 - Accepted pushes create a durable Workflow instance and print a run URL.
 - Accepted pushes parse the pushed commit SHA from `git-receive-pack` and run CI in a SHA-scoped Sandbox.
@@ -31,6 +32,9 @@
 
 - Add `apps/git` as Wrangler Worker for Git smart HTTP.
 - Add `apps/ci` only as minimal repo/setup command generator.
+- Done: keep `apps/git` simple and stateless aside from Git request parsing/proxying and side-band streaming.
+- Done: move primary product bindings and ownership to `apps/ci`: Artifacts repo setup, Workflows, Sandbox, RunLog Agent, KV checkout credentials, run UI, SSE streams, and deploy secrets.
+- Done: after Artifacts accepts a push, `apps/git` calls `env.CI.fetch(...)` to create the run, then streams run logs back from `apps/ci` to Git side-band while the connection is alive.
 - Make workspace "wrangler-y" with app-level Wrangler configs and dev scripts.
 - Root scripts should delegate workspace orchestration to Turborepo.
 - App/package scripts should use Vite+ commands such as `vp check`, `vp test`, `vp build`, `vp exec`, and `vp dlx` instead of package-manager-specific commands.
@@ -103,11 +107,24 @@
 
 **Phase 6: Runs UI and Logs**
 
-- Add `https://ci.localhost/runs/:id` UI for live run logs.
-- The run UI should replay existing history on refresh, then stream new log events live, likely via SSE from the existing per-run Agent.
+- Done: add `https://ci.localhost/runs/:id` UI for server-streamed live run logs.
+- Done: expose `/runs/:id/stream` for raw SSE replay.
+- Done: move the RunLog Agent and SSE source from `apps/git` to `apps/ci` so `ci` owns all run state.
 - Keep all Workflow/Sandbox output in the run log stream so Git side-band and UI show the same events.
-- Explore ANSI color and emoji support in Git side-band and browser logs to make output livelier without breaking Git clients.
+- Done: add ANSI color support in Git side-band and styled browser log output without changing raw log storage.
 - Tail Workers are observability/debug option, not product state initially.
+
+**Phase 6B: App Boundary Refactor**
+
+- Goal: `apps/git` is only the public Git smart-HTTP interface for `git push cloudflare`.
+- Goal: `apps/ci` is the primary product application and owns protected UI/API state.
+- Done: move bindings from `apps/git` to `apps/ci`: `DEPLOY_WORKFLOW`, `Sandbox`, `RunLog`, `REPO_TOKENS`, Cloudflare deploy secrets, and Sandbox container config.
+- Done: add an internal CI API that `apps/git` can call after a successful receive-pack push, passing namespace, repo, Artifacts remote/token, commit SHA, and push metadata.
+- Done: have `apps/ci` create the Workflow instance, append initial run events, and expose the canonical `/runs/:id` and `/runs/:id/stream` routes.
+- Done: have `apps/git` subscribe to `apps/ci` run stream for side-band output instead of talking directly to RunLog.
+- Keep `apps/git` outside Cloudflare Access unless Git clients can reliably provide Access credentials.
+- Lock `apps/ci` behind Cloudflare Access when deployed; provide internal service-to-service access for `apps/git` to create runs and stream logs.
+- Decision: service-to-service calls use Service Bindings, e.g. `env.CI.fetch(...)`, so public `https://ci...` can be Access-protected without blocking `git push`.
 
 **Phase 7: Cloudflare Deploy Button**
 
@@ -134,6 +151,8 @@
 - H: Sandbox clones Artifacts repo and runs pnpm commands.
 - I: `npx --yes wrangler deploy` prints deployed URL with injected credentials.
 - J: `/runs/:id/stream` replays live Workflow/Sandbox output as SSE.
+- K: `apps/git` can trigger CI runs through `apps/ci` without owning Workflow/Sandbox/RunLog bindings.
+- L: deployed `apps/ci` is protected by Cloudflare Access while `git push cloudflare` still works through `apps/git`.
 
 **Unresolved Questions**
 

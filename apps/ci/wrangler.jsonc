@@ -3,13 +3,60 @@
   "name": "git-push-cf-ci",
   "main": "src/index.ts",
   "compatibility_date": "2026-04-28",
+  "compatibility_flags": ["nodejs_compat"],
   "observability": {
     "enabled": true,
+  },
+  "secrets": {
+    "required": ["CLOUDFLARE_ACCOUNT_ID", "CLOUDFLARE_API_TOKEN"],
   },
   "artifacts": [
     {
       "binding": "ARTIFACTS",
       "namespace": "production",
+    },
+  ],
+  "kv_namespaces": [
+    {
+      "binding": "REPO_TOKENS",
+      "id": "git_push_cf_repo_tokens",
+    },
+  ],
+  "containers": [
+    {
+      "class_name": "Sandbox",
+      "image": "./Dockerfile",
+      "instance_type": "standard-1",
+      "max_instances": 1,
+    },
+  ],
+  "durable_objects": {
+    "bindings": [
+      {
+        "class_name": "Sandbox",
+        "name": "Sandbox",
+      },
+      {
+        "class_name": "RunLog",
+        "name": "RunLog",
+      },
+    ],
+  },
+  "migrations": [
+    {
+      "new_sqlite_classes": ["Sandbox"],
+      "tag": "v1",
+    },
+    {
+      "new_sqlite_classes": ["RunLog"],
+      "tag": "v2",
+    },
+  ],
+  "workflows": [
+    {
+      "name": "git-push-cf-deploy",
+      "binding": "DEPLOY_WORKFLOW",
+      "class_name": "DeployWorkflow",
     },
   ],
 }

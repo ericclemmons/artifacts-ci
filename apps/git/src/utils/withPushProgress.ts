@@ -1,8 +1,5 @@
-import { env } from "cloudflare:workers";
 import { encodeSideBandProgress, getPushedCommitSha } from "./gitProtocol";
-import { appendRunLog, getRunLog } from "./runLog";
 
-const CI_BASE_URL = "https://ci.localhost";
 const PUSH_STREAM_TIMEOUT_MS = 15 * 60 * 1000;
 
 export async function withPushProgress(
@@ -10,6 +7,7 @@ export async function withPushProgress(
   route: { namespace: string; repo: string; remote: string; token: string },
   supportsSideBand: boolean,
   requestBody: ArrayBuffer | undefined,
+  ci: Fetcher,
 ) {
   const headers = new Headers(response.headers);
   const body = new Uint8Array(await response.arrayBuffer());
@@ -24,26 +22,15 @@ export async function withPushProgress(
     });
   }
 
-  const runId = crypto.randomUUID();
   const commitSha = getPushedCommitSha(requestBody);
-  await appendRunLog(runId, "Cloudflare CI accepted push");
-  await appendRunLog(runId, `repo ${route.namespace}/${route.repo}`);
-  await appendRunLog(runId, `commit ${commitSha ?? "unknown"}`);
-  await appendRunLog(runId, `run ${CI_BASE_URL}/runs/${runId}`);
-
-  await env.DEPLOY_WORKFLOW.create({
-    id: runId,
-    params: {
-      runId,
-      namespace: route.namespace,
-      repo: route.repo,
-      artifactsRemote: route.remote,
-      artifactsToken: route.token,
-      commitSha,
-      pushedAt: new Date().toISOString(),
-    },
+  const run = await createRun(ci, {
+    namespace: route.namespace,
+    repo: route.repo,
+    artifactsRemote: route.remote,
+    artifactsToken: route.token,
+    commitSha,
+    pushedAt: new Date().toISOString(),
   });
-  await appendRunLog(runId, "workflow trigger accepted");
 
   if (!supportsSideBand) {
     return new Response(body, {
@@ -53,14 +40,38 @@ export async function withPushProgress(
     });
   }
 
-  return new Response(streamPushProgress(runId, body), {
+  return new Response(streamPushProgress(ci, run.runId, body), {
     status: response.status,
     statusText: response.statusText,
     headers,
   });
 }
 
-function streamPushProgress(runId: string, gitStatus: Uint8Array) {
+async function createRun(
+  ci: Fetcher,
+  params: {
+    namespace: string;
+    repo: string;
+    artifactsRemote: string;
+    artifactsToken: string;
+    commitSha: string | null;
+    pushedAt: string;
+  },
+) {
+  const response = await ci.fetch("https://ci.internal/internal/runs", {
+    method: "POST",
+    body: JSON.stringify(params),
+    headers: { "Content-Type": "application/json" },
+  });
+
+  if (!response.ok) {
+    throw new Error(`CI run creation failed: ${response.status} ${await response.text()}`);
+  }
+
+  return response.json<{ runId: string; runUrl: string }>();
+}
+
+function streamPushProgress(ci: Fetcher, runId: string, gitStatus: Uint8Array) {
   return new ReadableStream<Uint8Array>({
     async start(controller) {
       let closed = false;
@@ -84,7 +95,7 @@ function streamPushProgress(runId: string, gitStatus: Uint8Array) {
       }, PUSH_STREAM_TIMEOUT_MS);
 
       try {
-        const response = await getRunLog(runId).fetch("https://run-log.local/stream");
+        const response = await ci.fetch(`https://ci.internal/internal/runs/${runId}/stream`);
 
         for await (const event of readServerSentEvents(response.body)) {
           if (event.event === "close") {

@@ -1,8 +1,3 @@
-export { DeployWorkflow } from "./DeployWorkflow";
-export { RunLog } from "./RunLog";
-export { ContainerProxy, Sandbox } from "./Sandbox";
-
-import { getAgentByName } from "agents";
 import { getUpstream, withArtifactsAuth } from "./utils/artifactsProxy";
 import { cleanRepoName } from "./utils/cleanRepoName";
 import { isGitServiceRoute, parseGitRoute } from "./utils/gitRoute";
@@ -15,12 +10,6 @@ const DEFAULT_NAMESPACE = "production";
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
-
-    const runStream = parseRunStreamRoute(url.pathname);
-    if (runStream) {
-      const runLog = await getAgentByName(env.RunLog, runStream.runId);
-      return runLog.fetch(new Request("https://run-log.local/stream", request));
-    }
 
     const route = parseGitRoute(url.pathname);
 
@@ -65,19 +54,10 @@ export default {
         { ...route, repo: repoName, remote: upstream.remote, token: upstream.token },
         supportsSideBand,
         body,
+        env.CI,
       );
     }
 
     return upstreamResponse;
   },
 } satisfies ExportedHandler<Env>;
-
-function parseRunStreamRoute(pathname: string) {
-  const match = pathname.match(/^\/runs\/([^/]+)\/stream$/);
-
-  if (!match) {
-    return null;
-  }
-
-  return { runId: match[1] };
-}

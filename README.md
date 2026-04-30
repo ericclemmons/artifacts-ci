@@ -17,7 +17,7 @@ The local endpoints are:
 - `https://ci.localhost` creates Artifacts repos and setup commands.
 - `https://git.localhost` accepts Git smart-HTTP pushes.
 
-`apps/git/.env` must include deploy credentials for the Sandbox `wrangler deploy` step. The token needs Workers deploy permissions for the account.
+`apps/ci/.env` must include deploy credentials for the Sandbox `wrangler deploy` step. The token needs Workers deploy permissions for the account.
 
 ## Smoke Test
 

@@ -14,9 +14,9 @@ export class Sandbox extends BaseSandbox<Env> {
 }
 
 Sandbox.outboundByHost = {
-  "api.cloudflare.com": (request: Request) => proxyCloudflareApiRequest(request),
-  "artifacts.sandbox": (request: Request, env: Env) => proxyArtifactsRequest(request, env),
-  "cloudflare-api.sandbox": (request: Request) => proxyCloudflareApiRequest(request),
+  "api.cloudflare.com": (request: Request) => proxyCloudflareApiRequest(request, env),
+  "artifacts.sandbox": (request: Request) => proxyArtifactsRequest(request, env),
+  "cloudflare-api.sandbox": (request: Request) => proxyCloudflareApiRequest(request, env),
 };
 
 export async function putArtifactsGitParams(

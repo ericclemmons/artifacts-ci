@@ -8,12 +8,8 @@
     "build": "tsc --noEmit",
     "deploy": "wrangler deploy"
   },
-  "dependencies": {
-    "@cloudflare/sandbox": "catalog:",
-    "agents": "catalog:"
-  },
+  "dependencies": {},
   "devDependencies": {
-    "@types/node": "catalog:",
     "portless": "^0.11.1",
     "typescript": "~6.0.2",
     "wrangler": "^4.86.0"

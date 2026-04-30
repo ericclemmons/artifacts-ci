@@ -1,10 +1,25 @@
+export { DeployWorkflow } from "./DeployWorkflow";
+export { RunLog } from "./RunLog";
+export { ContainerProxy, Sandbox } from "./Sandbox";
+
+import { getAgentByName } from "agents";
 import { Hono } from "hono";
 import { cleanRepoName } from "./utils/cleanRepoName";
 import { createRepoSetup, createRepoSetupScript } from "./utils/createRepoSetup";
 import { ensureRepo } from "./utils/ensureRepo";
+import { appendRunLog } from "./utils/runLog";
 
 const app = new Hono<{ Bindings: Env }>();
-const GIT_BASE_URL = "https://git.localhost";
+const CI_BASE_URL = "https://ci.localhost";
+
+type CreateRunRequest = {
+  namespace?: string;
+  repo?: string;
+  artifactsRemote?: string;
+  artifactsToken?: string;
+  commitSha?: string | null;
+  pushedAt?: string;
+};
 
 app.get("/", (context) => context.text("POST /repos { name } to create setup commands.\n"));
 
@@ -34,7 +49,7 @@ app.get("/repos/*", async (context) => {
 app.get("/runs/:id", (context) => {
   const runId = context.req.param("id");
 
-  return new Response(renderRunPage(runId), {
+  return new Response(renderRunPage(runId, context.env), {
     headers: {
       "Cache-Control": "no-store",
       "Content-Type": "text/html; charset=utf-8",
@@ -43,10 +58,52 @@ app.get("/runs/:id", (context) => {
 });
 
 app.get("/runs/:id/stream", async (context) => {
-  const runId = encodeURIComponent(context.req.param("id"));
-  const response = await fetch(`${GIT_BASE_URL}/runs/${runId}/stream`, {
-    headers: { Accept: "text/event-stream" },
+  const runLog = await getAgentByName(context.env.RunLog, context.req.param("id"));
+  return runLog.fetch("https://run-log.local/stream");
+});
+
+app.post("/internal/runs", async (context) => {
+  const body = (await context.req.json<CreateRunRequest>().catch(() => ({}))) as CreateRunRequest;
+  const namespace = body.namespace ?? "";
+  const repo = body.repo ? cleanRepoName(body.repo) : "";
+
+  if (!namespace || !repo || !body.artifactsRemote || !body.artifactsToken) {
+    return context.text("Missing run parameters\n", 400);
+  }
+
+  const runId = crypto.randomUUID();
+  const runUrl = `${CI_BASE_URL}/runs/${runId}`;
+
+  await appendRunLog(runId, "Cloudflare CI accepted push");
+  await appendRunLog(runId, `repo ${namespace}/${repo}`);
+  await appendRunLog(runId, `commit ${body.commitSha ?? "unknown"}`);
+  await appendRunLog(runId, `run ${runUrl}`);
+
+  await context.env.DEPLOY_WORKFLOW.create({
+    id: runId,
+    params: {
+      runId,
+      namespace,
+      repo,
+      artifactsRemote: body.artifactsRemote,
+      artifactsToken: body.artifactsToken,
+      commitSha: body.commitSha ?? null,
+      pushedAt: body.pushedAt ?? new Date().toISOString(),
+    },
   });
+  await appendRunLog(runId, "workflow trigger accepted");
+
+  return context.json({ runId, runUrl });
+});
+
+app.get("/internal/runs/:id/stream", async (context) => {
+  const runLog = await getAgentByName(context.env.RunLog, context.req.param("id"));
+  return runLog.fetch("https://run-log.local/stream");
+});
+
+app.get("/internal/runs/:id", async (context) => {
+  const runLog = await getAgentByName(context.env.RunLog, context.req.param("id"));
+  const response = await runLog.fetch("https://run-log.local/stream");
 
   return new Response(response.body, {
     status: response.status,
@@ -60,7 +117,7 @@ app.get("/runs/:id/stream", async (context) => {
 
 export default app;
 
-function renderRunPage(runId: string) {
+function renderRunPage(runId: string, env: Env) {
   const safeRunId = escapeHtml(runId);
 
   return new ReadableStream<Uint8Array>({
@@ -214,9 +271,8 @@ function renderRunPage(runId: string) {
       <pre id="log">`);
 
       try {
-        const response = await fetch(`${GIT_BASE_URL}/runs/${encodeURIComponent(runId)}/stream`, {
-          headers: { Accept: "text/event-stream" },
-        });
+        const runLog = await getAgentByName(env.RunLog, runId);
+        const response = await runLog.fetch("https://run-log.local/stream");
 
         if (!response.ok) {
           write(
