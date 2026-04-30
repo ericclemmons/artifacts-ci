@@ -56,52 +56,28 @@ export class DeployWorkflow extends WorkflowEntrypoint<Env, DeployParams> {
       return output;
     });
 
-    const install = await step.do("install dependencies", async () =>
-      runSandboxCommand(
-        event.payload.runId,
-        "install",
-        sandboxName,
-        "cd /workspace/repo && npm install --loglevel=info --foreground-scripts",
-        "$ npm install",
-      ),
-    );
-
-    const lint = await step.do("lint project", async () =>
-      runSandboxCommand(
-        event.payload.runId,
-        "lint",
-        sandboxName,
-        "cd /workspace/repo && npm run lint --if-present",
-        "$ npm run lint --if-present",
-      ),
-    );
-
-    const test = await step.do("test project", async () =>
-      runSandboxCommand(
-        event.payload.runId,
-        "test",
-        sandboxName,
-        "cd /workspace/repo && npm run test --if-present",
-        "$ npm run test --if-present",
-      ),
-    );
-
-    const deploy = await step.do("deploy project", { retries: { limit: 0, delay: 0 } }, async () =>
-      runSandboxCommand(
-        event.payload.runId,
-        "deploy",
-        sandboxName,
-        "cd /workspace/repo && npx --yes wrangler deploy",
-        "$ npx --yes wrangler deploy",
-        [],
-        {
-          env: {
-            CLOUDFLARE_API_BASE_URL: "http://cloudflare-api.sandbox/client/v4",
-            CLOUDFLARE_ACCOUNT_ID: envPlaceholders.CLOUDFLARE_ACCOUNT_ID,
-            CLOUDFLARE_API_TOKEN: envPlaceholders.CLOUDFLARE_API_TOKEN,
+    const agentCi = await step.do(
+      "Run GitHub Actions",
+      { retries: { limit: 0, delay: 0 } },
+      async () =>
+        runSandboxCommand(
+          event.payload.runId,
+          "agent-ci",
+          sandboxName,
+          "cd /workspace/repo && npx --yes @redwoodjs/agent-ci run --all",
+          "$ npx --yes @redwoodjs/agent-ci run --all",
+          [],
+          {
+            env: {
+              CLOUDFLARE_API_BASE_URL: "http://cloudflare-api.sandbox/client/v4",
+              CLOUDFLARE_ACCOUNT_ID: envPlaceholders.CLOUDFLARE_ACCOUNT_ID,
+              CLOUDFLARE_API_TOKEN: envPlaceholders.CLOUDFLARE_API_TOKEN,
+              GITHUB_REPOSITORY: `${queued.namespace}/${queued.repo}`,
+              GITHUB_REPO: `${queued.namespace}/${queued.repo}`,
+              GITHUB_SHA: queued.commitSha ?? "",
+            },
           },
-        },
-      ),
+        ),
     );
 
     const cleanup = await step.do("destroy sandbox", async () => {
@@ -116,10 +92,7 @@ export class DeployWorkflow extends WorkflowEntrypoint<Env, DeployParams> {
       status: "planned",
       steps: {
         checkout,
-        install,
-        lint,
-        test,
-        deploy,
+        agentCi,
         cleanup,
       },
     };
@@ -133,7 +106,7 @@ async function runSandboxCommand(
   command: string,
   displayCommand: string,
   redactions: string[] = [],
-  options?: StreamOptions,
+  options?: SandboxCommandOptions,
 ) {
   await appendRunLog(runId, displayCommand);
 
@@ -170,6 +143,8 @@ async function runSandboxCommand(
     throw error;
   }
 }
+
+type SandboxCommandOptions = StreamOptions & { env?: Record<string, string> };
 
 function redact(value: string, redactions: string[]) {
   return redactions.reduce((redacted, secret) => redacted.replaceAll(secret, "<redacted>"), value);

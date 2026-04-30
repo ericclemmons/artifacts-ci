@@ -113,14 +113,14 @@
 - Done: add Sandbox SDK dependency, minimal `Dockerfile`, container binding, Agent/Durable Object binding, and migration.
 - Done: Workflow clones through a static virtual Sandbox remote and Worker-side outbound handler: `http://artifacts.sandbox/<namespace>/<repo>.git`.
 - Done: short-lived Artifacts checkout credentials are stored in KV for the outbound handler so the Sandbox never sees the token.
-- Done: CI uses npm commands initially: `npm install`, `npm run lint --if-present`, `npm run test --if-present`, and `npm run build`.
+- Done: CI used npm commands initially: `npm install`, `npm run lint --if-present`, `npm run test --if-present`, and `npm run build`.
 - Current deploy mode: throw `NonRetryableError("deploy: Not implemented")` after CI so CD can be implemented separately.
 - Done: stream available command output to git side-band while connection is alive.
 - Done: capture run log output in a per-run Agent with `/runs/:id/stream` SSE replay.
 - Done: `wrangler deploy --dry-run` for `apps/git` builds the Sandbox container when Docker is running.
 - Done: fresh `ci.localhost` and `git.localhost` dev processes are healthy, and `git push cloudflare` still succeeds from a clean process state.
 - Done: local Sandbox Workflow execution without `MINIFLARE_CONTAINER_EGRESS_IMAGE`, using Docker Desktop.
-- Deferred: package-backed push validates real `pnpx wrangler deploy` and returns the deployed URL.
+- Deferred: package-backed push validates deploy through an Agent CI workflow and returns the deployed URL.
 
 **Phase 5: CI, then CD**
 
@@ -129,6 +129,7 @@
 - Done: run npm-based CI in Sandbox: install, lint, test, and build.
 - Done: add outbound credential injection for Cloudflare API using Worker-side deploy secrets and Wrangler `CLOUDFLARE_API_BASE_URL` pointed at `http://cloudflare-api.sandbox/client/v4`.
 - Done: replace deploy placeholder with `npx --yes wrangler deploy` and no Workflow retries for the deploy step.
+- Done: replace hard-coded Sandbox install/lint/test/deploy sequence with `npx --yes @redwoodjs/agent-ci run --all`.
 - Done: preserve Wrangler-generated asset upload JWTs while replacing only the Sandbox placeholder API token.
 - Done: smoke validation curls `https://git-push-cf.ericclemmons.workers.dev` after deploy.
 - Deferred: deployment deletion is intentionally out of scope for now because Git ref-delete mapping is too dangerous.
@@ -170,8 +171,8 @@
 - Add a GitHub Actions example for repos that want hosted CI alongside or before push-driven deploys.
 - Reference Vite+ CI guidance: https://viteplus.dev/guide/ci#github-actions
 - Use `redwoodjs/agent-ci` as the example CI action: https://github.com/redwoodjs/agent-ci
-- Treat `agent-ci` as an alternate execution backend, not duplicate work: GitHub Actions can replace parts of the default Sandbox Workflow such as lint, test, and build.
-- Likely also support GitHub Actions replacing the Sandbox `wrangler deploy` step when credentials and environment targeting are configured there.
+- Done: treat `agent-ci` as the execution backend for pushed repos instead of duplicating lint/test/build in the Sandbox Workflow.
+- Support GitHub Actions replacing the Sandbox `wrangler deploy` step when credentials and environment targeting are configured there.
 - Show a minimal workflow that installs dependencies, runs checks/tests/build, and optionally deploys or reports status back through this project.
 - Decide later how `apps/ci` represents externally executed steps in run logs and status, e.g. linked GitHub check runs vs. mirrored log output.
 - Keep this as documentation/example scope unless product requirements demand first-class GitHub App or OAuth integration.

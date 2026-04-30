@@ -19,7 +19,7 @@
 
 - `apps/ci` is the Hono Worker at `https://ci.localhost`; it creates/reuses Cloudflare Artifacts repos and emits Git setup commands from `/repos/<name>.sh`.
 - `apps/git` is the Git smart-HTTP Worker at `https://git.localhost`; it proxies pushes to Artifacts and starts `DeployWorkflow`.
-- `apps/ci/src/DeployWorkflow.ts` runs the pushed repo in Cloudflare Sandbox: clone, `npm install`, optional `npm run lint`, optional `npm run test`, then `npx --yes wrangler deploy`.
+- `apps/ci/src/DeployWorkflow.ts` runs the pushed repo in Cloudflare Sandbox: clone, then `npx --yes @redwoodjs/agent-ci run --all`.
 - `packages/utils` is still mostly starter scaffolding; do not infer product architecture from its README metadata.
 - `examples/website` is a simple Vite example, not the main app and not part of `pnpm-workspace.yaml`.
 

@@ -17,7 +17,7 @@ The local endpoints are:
 - `https://ci.localhost` creates Artifacts repos and setup commands.
 - `https://git.localhost` accepts Git smart-HTTP pushes.
 
-`apps/ci/.env` must include deploy credentials for the Sandbox `wrangler deploy` step. The token needs Workers deploy permissions for the account.
+`apps/ci/.env` must include deploy credentials for Agent CI workflows that deploy through Wrangler. The token needs Workers deploy permissions for the account.
 
 ## Smoke Test
 
@@ -27,6 +27,32 @@ This creates a throwaway Vite React app in `/tmp`, configures the Cloudflare Git
 cd $(mktemp -d)
 vp create vite --no-interactive -- git-push-cf --template react-ts --no-interactive
 cd git-push-cf
+```
+
+Add the workflow that Agent CI will run inside Sandbox:
+
+```bash
+mkdir -p .github/workflows
+cat > .github/workflows/ci.yml <<'EOF'
+name: CI
+
+on:
+  pull_request:
+  push:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: voidzero-dev/setup-vp@v1
+        with:
+          node-version: "22"
+          cache: true
+      - run: vp install
+      - run: vp check
+      - run: vp build
+EOF
 ```
 
 Create the first commit. Vite scaffolding does not create one for us.
@@ -62,7 +88,7 @@ Expected output includes side-band status lines like:
 remote: 📦 production/git-push-cf-smoke-<timestamp>
 remote: 🗒️ commit <sha>
 remote: 🌐 https://ci.localhost/runs/<id>
-remote: $ npm install
+remote: $ npx --yes @redwoodjs/agent-ci run --all
 ```
 
 If Git cannot verify the local Portless certificate, trust the Portless CA once in your shell startup file:
@@ -71,17 +97,14 @@ If Git cannot verify the local Portless certificate, trust the Portless CA once 
 export GIT_SSL_CAINFO="$HOME/.portless/ca.pem"
 ```
 
-After the push, the Git Worker starts a Workflow that clones the Artifacts repo into Sandbox and runs CI:
+After the push, the Git Worker starts a Workflow that clones the Artifacts repo into Sandbox and runs the repo's GitHub Actions workflow through Agent CI:
 
 ```bash
 git clone <artifacts-remote> /workspace/repo
-npm install
-npm run lint --if-present
-npm run test --if-present
-npx --yes wrangler deploy
+npx --yes @redwoodjs/agent-ci run --all
 ```
 
-Wrangler may mint short-lived upload tokens while deploying static assets. The Git Worker keeps those Wrangler-generated tokens intact while replacing only the placeholder API token passed into the Sandbox.
+Wrangler may mint short-lived upload tokens while deploying static assets from workflow steps. The CI Worker keeps those Wrangler-generated tokens intact while replacing only the placeholder API token passed into the Sandbox.
 
 ## Checks
 
