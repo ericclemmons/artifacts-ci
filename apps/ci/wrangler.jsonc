@@ -14,12 +14,17 @@
     {
       "binding": "ARTIFACTS",
       "namespace": "production",
+      "remote": true,
     },
   ],
   "kv_namespaces": [
     {
       "binding": "REPO_TOKENS",
       "id": "git_push_cf_repo_tokens",
+    },
+    {
+      "binding": "REPO_REMOTES",
+      "id": "git_push_cf_repo_remotes",
     },
   ],
   "containers": [

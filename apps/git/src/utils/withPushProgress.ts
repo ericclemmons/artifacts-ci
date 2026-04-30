@@ -179,47 +179,8 @@ function splitLines(value: string) {
 }
 
 function formatPushLine(line: string) {
-  if (line.startsWith("$ ")) {
-    return `${ansi.bold}${ansi.blue}${line}${ansi.reset}`;
-  }
-
-  if (line.includes(" failed") || line.includes("failed:")) {
-    return `${ansi.bold}${ansi.red}${line}${ansi.reset}`;
-  }
-
-  if (line.endsWith(" completed") || line === "Cloudflare CI accepted push") {
-    return `${ansi.green}${line}${ansi.reset}`;
-  }
-
-  if (line.startsWith("run https://")) {
-    return `${ansi.cyan}${line}${ansi.reset}`;
-  }
-
-  if (
-    line.startsWith("repo ") ||
-    line.startsWith("commit ") ||
-    line.startsWith("artifacts remote ") ||
-    line === "workflow trigger accepted"
-  ) {
-    return `${ansi.dim}${line}${ansi.reset}`;
-  }
-
-  if (line.startsWith("npm http fetch") || line.startsWith("npm info ")) {
-    return `${ansi.dim}${line}${ansi.reset}`;
-  }
-
   return line;
 }
-
-const ansi = {
-  reset: "\x1b[0m",
-  bold: "\x1b[1m",
-  dim: "\x1b[2m",
-  red: "\x1b[31m",
-  green: "\x1b[32m",
-  blue: "\x1b[34m",
-  cyan: "\x1b[36m",
-};
 
 function getErrorMessage(error: unknown) {
   return error instanceof Error ? error.message : "unknown error";

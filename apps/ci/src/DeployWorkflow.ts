@@ -38,7 +38,6 @@ export class DeployWorkflow extends WorkflowEntrypoint<Env, DeployParams> {
     const checkout = await step.do("checkout artifacts repo", async () => {
       const cloneRemote = `http://artifacts.sandbox/${queued.namespace}/${queued.repo}.git`;
 
-      await appendRunLog(event.payload.runId, `artifacts remote ${cloneRemote}`);
       await putArtifactsGitParams(queued.namespace, queued.repo, {
         remote: event.payload.artifactsRemote,
         token: event.payload.artifactsToken,
@@ -49,6 +48,7 @@ export class DeployWorkflow extends WorkflowEntrypoint<Env, DeployParams> {
         "checkout",
         sandboxName,
         getCheckoutCommand(cloneRemote, queued.commitSha),
+        `$ git clone ${cloneRemote} /workspace/repo${queued.commitSha ? ` && git checkout ${queued.commitSha}` : ""}`,
       );
 
       await deleteArtifactsGitParams(queued.namespace, queued.repo);
@@ -62,6 +62,7 @@ export class DeployWorkflow extends WorkflowEntrypoint<Env, DeployParams> {
         "install",
         sandboxName,
         "cd /workspace/repo && npm install --loglevel=info --foreground-scripts",
+        "$ npm install",
       ),
     );
 
@@ -71,6 +72,7 @@ export class DeployWorkflow extends WorkflowEntrypoint<Env, DeployParams> {
         "lint",
         sandboxName,
         "cd /workspace/repo && npm run lint --if-present",
+        "$ npm run lint --if-present",
       ),
     );
 
@@ -80,15 +82,7 @@ export class DeployWorkflow extends WorkflowEntrypoint<Env, DeployParams> {
         "test",
         sandboxName,
         "cd /workspace/repo && npm run test --if-present",
-      ),
-    );
-
-    const buildProject = await step.do("build project", async () =>
-      runSandboxCommand(
-        event.payload.runId,
-        "build",
-        sandboxName,
-        "cd /workspace/repo && npm run build",
+        "$ npm run test --if-present",
       ),
     );
 
@@ -98,6 +92,7 @@ export class DeployWorkflow extends WorkflowEntrypoint<Env, DeployParams> {
         "deploy",
         sandboxName,
         "cd /workspace/repo && npx --yes wrangler deploy",
+        "$ npx --yes wrangler deploy",
         [],
         {
           env: {
@@ -112,7 +107,6 @@ export class DeployWorkflow extends WorkflowEntrypoint<Env, DeployParams> {
     const cleanup = await step.do("destroy sandbox", async () => {
       await appendRunLog(event.payload.runId, "$ cleanup");
       await getSandbox(env.Sandbox, sandboxName).destroy();
-      await appendRunLog(event.payload.runId, "cleanup completed");
     });
 
     await closeRunLog(event.payload.runId);
@@ -125,7 +119,6 @@ export class DeployWorkflow extends WorkflowEntrypoint<Env, DeployParams> {
         install,
         lint,
         test,
-        build: buildProject,
         deploy,
         cleanup,
       },
@@ -138,10 +131,11 @@ async function runSandboxCommand(
   label: string,
   sandboxName: string,
   command: string,
+  displayCommand: string,
   redactions: string[] = [],
   options?: StreamOptions,
 ) {
-  await appendRunLog(runId, `$ ${label}`);
+  await appendRunLog(runId, displayCommand);
 
   try {
     const sandbox = getSandbox(env.Sandbox, sandboxName);
@@ -169,8 +163,6 @@ async function runSandboxCommand(
       throw new Error(`Command failed with exit code ${exitCode}: ${command}`);
     }
 
-    await appendRunLog(runId, `${label} completed`);
-
     return output.join("");
   } catch (error) {
     await appendRunLog(runId, `${label} failed: ${getErrorMessage(error)}`);
@@ -192,6 +184,8 @@ function getSandboxName(namespace: string, repo: string, commitSha: string | nul
 }
 
 function getCheckoutCommand(remote: string, commitSha: string | null) {
-  const checkout = commitSha ? ` && cd /workspace/repo && git checkout ${commitSha}` : "";
+  const checkout = commitSha
+    ? ` && cd /workspace/repo && git -c advice.detachedHead=false checkout ${commitSha}`
+    : "";
   return `rm -rf /workspace/repo && git clone "${remote}" /workspace/repo${checkout}`;
 }
