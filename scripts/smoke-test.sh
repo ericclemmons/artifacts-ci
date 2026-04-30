@@ -63,4 +63,4 @@ git add .
 git commit -m "Initial smoke test fixture"
 
 curl -ksSf "https://ci.localhost/repos/$repo.sh" | bash
-git push cloudflare
+git push --force cloudflare
