@@ -109,6 +109,12 @@ export class DeployWorkflow extends WorkflowEntrypoint<Env, DeployParams> {
       ),
     );
 
+    const cleanup = await step.do("destroy sandbox", async () => {
+      await appendRunLog(event.payload.runId, "$ cleanup");
+      await getSandbox(env.Sandbox, sandboxName).destroy();
+      await appendRunLog(event.payload.runId, "cleanup completed");
+    });
+
     await closeRunLog(event.payload.runId);
 
     return {
@@ -121,6 +127,7 @@ export class DeployWorkflow extends WorkflowEntrypoint<Env, DeployParams> {
         test,
         build: buildProject,
         deploy,
+        cleanup,
       },
     };
   }

@@ -50,6 +50,12 @@ Push to Cloudflare:
 git push cloudflare
 ```
 
+Confirm the deployed smoke site responds:
+
+```bash
+curl -fsS https://git-push-cf.ericclemmons.workers.dev >/dev/null
+```
+
 Expected output includes side-band status lines like:
 
 ```text

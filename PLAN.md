@@ -98,8 +98,8 @@
 - Done: add outbound credential injection for Cloudflare API using Worker-side deploy secrets and Wrangler `CLOUDFLARE_API_BASE_URL` pointed at `http://cloudflare-api.sandbox/client/v4`.
 - Done: replace deploy placeholder with `npx --yes wrangler deploy` and no Workflow retries for the deploy step.
 - Done: preserve Wrangler-generated asset upload JWTs while replacing only the Sandbox placeholder API token.
-- Next validation: restart Git Worker dev if needed and rerun the real deploy smoke push.
-- Next feature: support Git-native deletion, likely `git push cloudflare :main`, by mapping delete pushes to `wrangler delete`.
+- Done: smoke validation curls `https://git-push-cf.ericclemmons.workers.dev` after deploy.
+- Deferred: deployment deletion is intentionally out of scope for now because Git ref-delete mapping is too dangerous.
 
 **Phase 6: Runs UI and Logs**
 
