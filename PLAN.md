@@ -159,6 +159,11 @@
 - Add an official Cloudflare "Deploy to Cloudflare" button for onboarding/templates.
 - Reference: https://developers.cloudflare.com/workers/platform/deploy-buttons/
 - Keep Deploy Button support separate from push-driven `npx --yes wrangler deploy` inside Sandbox.
+- Include the GitHub push/publish path as part of this phase so the public template repo can be used by Deploy to Cloudflare.
+- Decide whether the deploy button points at this monorepo directly or a separate template repo extracted from it.
+- Monorepo concern: deploy must provision two Workers, `apps/ci` and `apps/git`, each with its own Wrangler config, bindings, migrations, container/Sandbox config, and the `git -> ci` Service Binding.
+- Confirm whether Cloudflare Deploy Button can handle this monorepo/two-worker shape directly; if not, document a bootstrap script or GitHub Actions workflow that runs the required `vp run ci#deploy` and `vp run git#deploy` sequence.
+- Ensure deploy docs cover required secrets, custom domains/routes, and the Access setup gap because Wrangler deploy does not configure Access applications.
 
 **Phase 7B: GitHub Actions Example**
 
