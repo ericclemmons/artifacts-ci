@@ -19,9 +19,10 @@
 - Accepted pushes create a durable Workflow instance and print a run URL.
 - Workflow is scaffolded into checkout/install/build/deploy steps with `ReadableStream`-friendly placeholders for future Sandbox output.
 - Sandbox SDK is wired into `apps/git` with the minimal container Dockerfile and Worker binding.
-- Sandbox CI echo is statically validated, and Wrangler can build the Sandbox container with Docker/OrbStack.
+- Sandbox CI echo is statically validated, and Wrangler can build the Sandbox container with Docker.
 - Local `ci` and `git` dev Workers start cleanly after stopping stale `portless` wrappers; no `--force` script change is needed right now.
-- Local Sandbox runtime is validated with the arm64 `proxy-everything` image override from cloudflare/sandbox-sdk#522.
+- Local Sandbox runtime is being revalidated on Docker Desktop without the arm64 `proxy-everything` image override from cloudflare/sandbox-sdk#522.
+- Push-time Workflow log streaming is implemented through a per-run Agent and SSE endpoint.
 
 **Monorepo Changes**
 
@@ -72,16 +73,16 @@
 
 **Phase 4: Sandbox CI Echo**
 
-- Done: add Sandbox SDK dependency, minimal `Dockerfile`, container binding, Durable Object binding, and migration.
+- Done: add Sandbox SDK dependency, minimal `Dockerfile`, container binding, Agent/Durable Object binding, and migration.
 - Done: Workflow uses Sandbox SDK + Artifacts pattern to clone the pushed repo.
 - Done: assume `pnpm`; no package-manager detection.
-- Done: run `pnpm install`, `pnpm build`, and `pnpx wrangler --version` through Sandbox `execStream`.
-- Stream available command output to git side-band while connection is alive.
-- Capture enough Workflow output to debug without adding storage yet.
-- Done: `wrangler deploy --dry-run` for `apps/git` builds the Sandbox container when Docker/OrbStack is running.
+- Current validation mode: stream the planned `git clone` command, then throw `NonRetryableError("checkout: Not implemented")` so log streaming can be validated quickly without retrying unfinished CI steps.
+- Done: stream available command output to git side-band while connection is alive.
+- Done: capture run log output in a per-run Agent with `/runs/:id/stream` SSE replay.
+- Done: `wrangler deploy --dry-run` for `apps/git` builds the Sandbox container when Docker is running.
 - Done: fresh `ci.localhost` and `git.localhost` dev processes are healthy, and `git push cloudflare` still succeeds from a clean process state.
-- Done: local Sandbox Workflow execution uses `MINIFLARE_CONTAINER_EGRESS_IMAGE` to pin the arm64 `proxy-everything` digest and avoid the Wrangler sidecar crash on arm64.
-- Done: package-backed push validates Sandbox clone, `pnpm install`, `pnpm build`, and `pnpx wrangler --version` all exit 0.
+- Revalidating: local Sandbox Workflow execution without `MINIFLARE_CONTAINER_EGRESS_IMAGE`, using Docker Desktop.
+- Deferred: package-backed push validates real `git clone`, `pnpm install`, `pnpm build`, and `pnpx wrangler --version` all exit 0.
 
 **Phase 5: Real Static Deploy**
 
@@ -115,8 +116,10 @@
 - G: Ctrl-C after Workflow creation does not stop run.
 - H: Sandbox clones Artifacts repo and runs pnpm commands.
 - I: `pnpx wrangler deploy` prints deployed URL with injected credentials.
+- J: `/runs/:id/stream` replays live Workflow/Sandbox output as SSE.
 
 **Unresolved Questions**
 
 - Can Git + Cloudflare Access token headers make a single protected worker viable?
-- How much Workflow log output can ReadableStream step state hold before R2/Agents become necessary?
+- How much run log output can the per-run Agent hold before R2 or a SQL-backed message table becomes necessary?
+- Should `git push` wait for the full CI run by default, or switch to a shorter attach window plus URL for longer deploys?

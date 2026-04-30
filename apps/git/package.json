@@ -4,12 +4,13 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "MINIFLARE_CONTAINER_EGRESS_IMAGE=cloudflare/proxy-everything:3cb1195 portless git --app-port 8788 wrangler dev --port 8788 --inspector-port 9232",
+    "dev": "portless git --app-port 8788 wrangler dev --port 8788 --inspector-port 9232",
     "build": "tsc --noEmit",
     "deploy": "wrangler deploy"
   },
   "dependencies": {
-    "@cloudflare/sandbox": "catalog:"
+    "@cloudflare/sandbox": "catalog:",
+    "agents": "catalog:"
   },
   "devDependencies": {
     "@types/node": "catalog:",

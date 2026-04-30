@@ -63,21 +63,11 @@ If Git cannot verify the local Portless certificate, trust the Portless CA once 
 export GIT_SSL_CAINFO="$HOME/.portless/ca.pem"
 ```
 
-In `apps/git` logs, these Sandbox startup messages are expected during local cold starts:
-
-```text
-Error checking if container is ready: Container is not listening to port 3000
-Port 3000 is ready
-```
-
-The first line is Wrangler polling the Sandbox container API before it has finished booting. It is only a problem if `Port 3000 is ready` never appears or command execution errors follow it.
-
-After the push, the Git Worker starts a Workflow that clones the Artifacts repo into Sandbox and runs:
+After the push, the Git Worker starts a Workflow and currently reports the first planned CI step as not implemented:
 
 ```bash
-pnpm install
-pnpm build
-pnpx wrangler --version
+git clone <artifacts-remote> /workspace/repo
+checkout not implemented
 ```
 
 ## Checks

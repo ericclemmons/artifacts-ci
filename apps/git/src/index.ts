@@ -1,6 +1,8 @@
 export { DeployWorkflow } from "./DeployWorkflow";
+export { RunLog } from "./RunLog";
 export { Sandbox } from "@cloudflare/sandbox";
 
+import { getAgentByName } from "agents";
 import { getUpstream, withArtifactsAuth } from "./utils/artifactsProxy";
 import { cleanRepoName } from "./utils/cleanRepoName";
 import { isGitServiceRoute, parseGitRoute } from "./utils/gitRoute";
@@ -13,6 +15,13 @@ const DEFAULT_NAMESPACE = "production";
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
+
+    const runStream = parseRunStreamRoute(url.pathname);
+    if (runStream) {
+      const runLog = await getAgentByName(env.RunLog, runStream.runId);
+      return runLog.fetch(request);
+    }
+
     const route = parseGitRoute(url.pathname);
 
     if (!route) {
@@ -52,7 +61,6 @@ export default {
 
     if (route.suffix === "/git-receive-pack" && request.method === "POST") {
       return withPushProgress(
-        env,
         upstreamResponse,
         { ...route, repo: repoName, remote: upstream.remote, token: upstream.token },
         supportsSideBand,
@@ -62,3 +70,13 @@ export default {
     return upstreamResponse;
   },
 } satisfies ExportedHandler<Env>;
+
+function parseRunStreamRoute(pathname: string) {
+  const match = pathname.match(/^\/runs\/([^/]+)\/stream$/);
+
+  if (!match) {
+    return null;
+  }
+
+  return { runId: match[1] };
+}

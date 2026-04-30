@@ -21,12 +21,20 @@
         "class_name": "Sandbox",
         "name": "Sandbox",
       },
+      {
+        "class_name": "RunLog",
+        "name": "RunLog",
+      },
     ],
   },
   "migrations": [
     {
       "new_sqlite_classes": ["Sandbox"],
       "tag": "v1",
+    },
+    {
+      "new_sqlite_classes": ["RunLog"],
+      "tag": "v2",
     },
   ],
   "workflows": [
