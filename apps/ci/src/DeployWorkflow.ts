@@ -1,5 +1,5 @@
 import { getSandbox, parseSSEStream } from "@cloudflare/sandbox";
-import type { ExecEvent, StreamOptions } from "@cloudflare/sandbox";
+import type { DirectoryBackup, ExecEvent, StreamOptions } from "@cloudflare/sandbox";
 import { env } from "cloudflare:workers";
 import { WorkflowEntrypoint } from "cloudflare:workers";
 import type { WorkflowEvent, WorkflowStep } from "cloudflare:workers";
@@ -35,6 +35,10 @@ export class DeployWorkflow extends WorkflowEntrypoint<Env, DeployParams> {
       event.payload.runId,
     );
 
+    const cache = await step.do("restore sandbox cache", async () =>
+      restoreSandboxCache(event.payload.runId, sandboxName),
+    );
+
     const checkout = await step.do("checkout artifacts repo", async () => {
       const cloneRemote = `http://artifacts.sandbox/${queued.namespace}/${queued.repo}.git`;
 
@@ -58,25 +62,45 @@ export class DeployWorkflow extends WorkflowEntrypoint<Env, DeployParams> {
       "Run GitHub Actions",
       { retries: { limit: 0, delay: 0 } },
       async () => {
-        await runSandboxCommand(event.payload.runId, sandboxName, "cd /workspace/repo");
+        try {
+          await runSandboxCommand(event.payload.runId, sandboxName, "cd /workspace/repo");
 
-        return runSandboxCommand(
-          event.payload.runId,
-          sandboxName,
-          "act -P ubuntu-latest=catthehacker/ubuntu:act-latest --container-options '--network=host'",
-          {
-            cwd: "/workspace/repo",
-            env: {
-              CLOUDFLARE_API_BASE_URL: "http://cloudflare-api.sandbox/client/v4",
-              CLOUDFLARE_ACCOUNT_ID: envPlaceholders.CLOUDFLARE_ACCOUNT_ID,
-              CLOUDFLARE_API_TOKEN: envPlaceholders.CLOUDFLARE_API_TOKEN,
-              GITHUB_REPOSITORY: `${queued.namespace}/${queued.repo}`,
-              GITHUB_REPO: `${queued.namespace}/${queued.repo}`,
-              GITHUB_SHA: queued.commitSha ?? "",
+          return await runSandboxCommand(
+            event.payload.runId,
+            sandboxName,
+            "act --action-offline-mode --pull=false -P ubuntu-latest=catthehacker/ubuntu:act-latest --container-options '--network=host'",
+            {
+              cwd: "/workspace/repo",
+              env: {
+                CLOUDFLARE_API_BASE_URL: "http://cloudflare-api.sandbox/client/v4",
+                CLOUDFLARE_ACCOUNT_ID: envPlaceholders.CLOUDFLARE_ACCOUNT_ID,
+                CLOUDFLARE_API_TOKEN: envPlaceholders.CLOUDFLARE_API_TOKEN,
+                GITHUB_REPOSITORY: `${queued.namespace}/${queued.repo}`,
+                GITHUB_REPO: `${queued.namespace}/${queued.repo}`,
+                GITHUB_SHA: queued.commitSha ?? "",
+                XDG_CACHE_HOME: "/workspace/.cache",
+                npm_config_store_dir: "/workspace/.cache/pnpm-store",
+              },
             },
-          },
-        );
+          );
+        } finally {
+          await saveSandboxCache(sandboxName);
+        }
       },
+    );
+
+    const deploy = await step.do(
+      "Deploy to Cloudflare",
+      { retries: { limit: 0, delay: 0 } },
+      async () =>
+        runSandboxCommand(event.payload.runId, sandboxName, "pnpm deploy", {
+          cwd: "/workspace/repo",
+          env: {
+            CLOUDFLARE_API_BASE_URL: "http://cloudflare-api.sandbox/client/v4",
+            CLOUDFLARE_ACCOUNT_ID: envPlaceholders.CLOUDFLARE_ACCOUNT_ID,
+            CLOUDFLARE_API_TOKEN: envPlaceholders.CLOUDFLARE_API_TOKEN,
+          },
+        }),
     );
 
     const cleanup = await step.do("destroy sandbox", async () => {
@@ -92,6 +116,8 @@ export class DeployWorkflow extends WorkflowEntrypoint<Env, DeployParams> {
       steps: {
         checkout,
         actions,
+        cache,
+        deploy,
         cleanup,
       },
     };
@@ -141,6 +167,38 @@ async function runSandboxCommand(
 }
 
 type SandboxCommandOptions = StreamOptions & { env?: Record<string, string> };
+
+const CACHE_BACKUP_KEY = "sandbox-cache:v1";
+const CACHE_DIR = "/workspace/.cache";
+
+async function restoreSandboxCache(runId: string, sandboxName: string) {
+  const value = await env.CACHE_BACKUPS.get(CACHE_BACKUP_KEY);
+
+  if (!value) {
+    await appendRunLog(runId, "cache: miss");
+    return "miss";
+  }
+
+  const backup = JSON.parse(value) as DirectoryBackup;
+  await getSandbox(env.Sandbox, sandboxName).restoreBackup(backup);
+  await appendRunLog(runId, `cache: restored ${backup.id}`);
+  return backup.id;
+}
+
+async function saveSandboxCache(sandboxName: string) {
+  try {
+    const sandbox = getSandbox(env.Sandbox, sandboxName);
+    await sandbox.exec(`mkdir -p ${CACHE_DIR}`);
+    const backup = await sandbox.createBackup({
+      dir: CACHE_DIR,
+      localBucket: true,
+      name: CACHE_BACKUP_KEY,
+    });
+    await env.CACHE_BACKUPS.put(CACHE_BACKUP_KEY, JSON.stringify(backup));
+  } catch {
+    // Cache is best effort while local backup support is experimental.
+  }
+}
 
 function getErrorMessage(error: unknown) {
   return error instanceof Error ? error.message : "unknown error";

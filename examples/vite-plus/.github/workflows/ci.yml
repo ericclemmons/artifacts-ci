@@ -9,7 +9,8 @@ jobs:
   check:
     runs-on: ubuntu-latest
     env:
-      npm_config_store_dir: /tmp/pnpm-store
+      npm_config_store_dir: /workspace/.cache/pnpm-store
+      XDG_CACHE_HOME: /workspace/.cache
     steps:
       - uses: actions/checkout@v4
       - uses: voidzero-dev/setup-vp@v1

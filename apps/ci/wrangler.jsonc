@@ -26,6 +26,16 @@
       "binding": "REPO_REMOTES",
       "id": "git_push_cf_repo_remotes",
     },
+    {
+      "binding": "CACHE_BACKUPS",
+      "id": "git_push_cf_cache_backups",
+    },
+  ],
+  "r2_buckets": [
+    {
+      "binding": "BACKUP_BUCKET",
+      "bucket_name": "git-push-cf-cache-backups",
+    },
   ],
   "containers": [
     {

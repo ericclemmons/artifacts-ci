@@ -23,7 +23,7 @@
 - `git push cloudflare` has been validated locally with side-band output, but environment-specific remotes should replace or wrap this before productizing.
 - Accepted pushes create a durable Workflow instance and print a run URL.
 - Accepted pushes parse the pushed commit SHA from `git-receive-pack` and run CI in a SHA-scoped Sandbox.
-- Workflow is scaffolded into checkout/install/build/deploy steps with `ReadableStream`-friendly placeholders for future Sandbox output.
+- Workflow shape: restore cache, checkout exact commit, run GitHub Actions with `act`, then deploy from the Workflow with `pnpm deploy` or `wrangler deploy`.
 - Sandbox SDK is wired into `apps/git` with the minimal container Dockerfile and Worker binding.
 - Sandbox CI checkout/install/lint/test/build is validated locally, and Wrangler can build the Sandbox container with Docker.
 - Local `ci` and `git` dev Workers start cleanly after stopping stale `portless` wrappers; no `--force` script change is needed right now.
@@ -110,8 +110,8 @@
 - Prefer candidate UX A unless Git remote-name conflicts or multi-provider ergonomics argue otherwise; it matches how users think about deploy targets.
 - Decision: Artifacts namespace should not equal environment. Keep repo storage independent from deployment target.
 - Environment should be stored in CI run metadata and passed to deploy command construction.
-- Production deploy command remains `wrangler deploy` or equivalent default-env command.
-- Non-production deploy command should become `wrangler deploy --env <environment>` or the project-specific equivalent.
+- Production deploy command remains `pnpm deploy`, `wrangler deploy`, or equivalent default-env command run by the Workflow after CI succeeds.
+- Non-production deploy command should become `pnpm deploy -- --env <environment>`, `wrangler deploy --env <environment>`, or the project-specific equivalent run by the Workflow.
 - Decide if `preview` is a shared environment, per-branch environment, or per-push ephemeral deployment.
 - Setup script should eventually emit environment-aware commands, including `remote.<environment>.push HEAD` for no-refspec pushes.
 - Run metadata should include `environment` separately from `namespace` so UI, logs, Access policies, and deploy behavior can evolve independently.
@@ -151,7 +151,9 @@
 - Done: parse pushed commit SHA from receive-pack and checkout that exact SHA in the Sandbox.
 - Done: run npm-based CI in Sandbox: install, lint, test, and build.
 - Done: add outbound credential injection for Cloudflare API using Worker-side deploy secrets and Wrangler `CLOUDFLARE_API_BASE_URL` pointed at `http://cloudflare-api.sandbox/client/v4`.
-- Done: replace deploy placeholder with `npx --yes wrangler deploy` and no Workflow retries for the deploy step.
+- Restore deploy step after `act` succeeds; deploy belongs in `DeployWorkflow`, not inside the GitHub Actions workflow.
+- Preferred deploy command: `pnpm deploy` when present, otherwise `wrangler deploy` or the repo-specific command.
+- Act may still need Cloudflare placeholder env/secrets for workflows that validate deploy credentials, but the real deployment step should use Worker-side secret injection through `CLOUDFLARE_API_BASE_URL`.
 - Done: replace hard-coded Sandbox install/lint/test/deploy sequence with `npx --yes @redwoodjs/agent-ci run --workflow .github/workflows/ci.yml`.
 - Current GitHub Actions runner blocker: validate whether Cloudflare's Dockerfile `CMD` starts Docker for Sandbox exec sessions locally; testing `act --container-options '--network=host'` as an alternative, but it still depends on Docker startup.
 - Current runner: `act -P ubuntu-latest=catthehacker/ubuntu:act-latest --container-options '--network=host'` in `/workspace/repo`.
@@ -162,11 +164,15 @@
 
 **Phase 5B: Sandbox Warm Cache / Backup**
 
-- Goal: speed up demo runs by avoiding repeated Docker image pulls and action/tool downloads.
+- Goal: speed up demo runs locally first by avoiding repeated action/tool/package downloads; Docker image backup can come after cache basics work.
 - Act image cache likely lives inside the Sandbox container's Docker data root, usually `/var/lib/docker`, because Docker-in-Docker runs inside the Sandbox.
 - Act action cache likely lives under the Sandbox user's cache dir, observed as `/root/.cache/act` in logs.
 - Vite+/pnpm caches may live under `/root/.vite-plus`, `/root/.local/share/pnpm`, `/root/.cache`, or the workflow's configured store dir.
-- Use Sandbox backup/restore to create a warm image after bootstrapping Docker and pulling `catthehacker/ubuntu:act-latest`.
+- Local backup/restore needs `BACKUP_BUCKET` R2 binding plus `localBucket: true`; production also needs `BACKUP_BUCKET_NAME`, `R2_ACCESS_KEY_ID`, and `R2_SECRET_ACCESS_KEY`.
+- Sandbox image must include `squashfs-tools` so `mksquashfs` exists for `createBackup()`.
+- First implementation target: set `XDG_CACHE_HOME=/workspace/.cache` and `npm_config_store_dir=/workspace/.cache/pnpm-store`, then back up `/workspace/.cache` with localBucket.
+- Later Docker image cache target: move Docker `data-root` from `/var/lib/docker` into an allowed backup root like `/workspace/.docker-data`; this requires daemon lifecycle care before backup/restore.
+- Use Sandbox backup/restore to create a warm cache after bootstrapping tools and running/pulling common actions.
 - Reference: https://developers.cloudflare.com/sandbox/guides/backup-restore/#create-a-backup
 - Candidate warmup command: run `docker pull catthehacker/ubuntu:act-latest` and optionally pre-run a tiny `act` workflow to populate `/root/.cache/act`.
 - Restore warm backup at Workflow start before checkout, then run pushed repo in the restored Sandbox.

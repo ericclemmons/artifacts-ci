@@ -13,7 +13,7 @@ COPY --from=docker.io/cloudflare/sandbox:0.9.2-musl /bin/bash /bin/bash
 COPY --from=docker.io/cloudflare/sandbox:0.9.2-musl /usr/lib/libreadline.so.8 /usr/lib/libreadline.so.8
 COPY --from=docker.io/cloudflare/sandbox:0.9.2-musl /usr/lib/libreadline.so.8.2 /usr/lib/libreadline.so.8.2
 
-RUN apk add --no-cache nodejs npm git tar act && \
+RUN apk add --no-cache nodejs npm git tar act squashfs-tools && \
   if command -v corepack >/dev/null 2>&1; then corepack enable pnpm; else npm install -g pnpm@10.33.2; fi
 
 RUN mkdir -p /workspace && chmod 1777 /workspace

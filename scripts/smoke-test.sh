@@ -17,13 +17,20 @@ git init -b main
 git add .
 git commit -m "Initial smoke test fixture"
 
+ready=0
 for _ in {1..30}; do
-  if curl -ksSf https://ci.localhost/ >/dev/null 2>&1; then
+  if curl -ksSf "https://ci.localhost/repos/$repo.sh" >/dev/null 2>&1; then
+    ready=1
     break
   fi
 
   sleep 1
 done
+
+if [[ "$ready" != 1 ]]; then
+  echo "Timed out waiting for https://ci.localhost/repos/$repo.sh" >&2
+  exit 1
+fi
 
 curl -ksSf "https://ci.localhost/repos/$repo.sh" | bash
 git push cloudflare
