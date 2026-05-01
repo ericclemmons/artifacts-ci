@@ -6,7 +6,7 @@
   "scripts": {
     "build": "tsc --noEmit",
     "deploy": "wrangler deploy",
-    "dev": "sh -c 'socket=\"$(pwd)/../proxy/.wrangler/docker-privileged.sock\"; wait-on --timeout 10s \"socket:$socket\" && DOCKER_HOST=\"unix://$socket\" wrangler dev --port 8787 --inspector-port 9231'",
+    "dev": "sh -c 'socket=\"$(pwd)/../proxy/.wrangler/docker-privileged.sock\"; wait-for-socket \"$socket\" && DOCKER_HOST=\"unix://$socket\" wrangler dev --port 8787 --inspector-port 9231'",
     "lint": "vp lint"
   },
   "dependencies": {
@@ -18,7 +18,7 @@
     "@types/node": "catalog:",
     "portless": "^0.11.1",
     "typescript": "~6.0.2",
-    "wait-on": "catalog:",
+    "wait-for-socket": "workspace:*",
     "wrangler": "^4.86.0"
   }
 }
