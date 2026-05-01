@@ -68,7 +68,10 @@ export class DeployWorkflow extends WorkflowEntrypoint<Env, DeployParams> {
           return await runSandboxCommand(
             event.payload.runId,
             sandboxName,
-            "act --action-offline-mode --pull=false -P ubuntu-latest=catthehacker/ubuntu:act-latest --container-options '--network=host'",
+            // Use the Sandbox wrapper so nested Docker jobs get host networking
+            // plus any local CA bundle.
+            // https://developers.cloudflare.com/sandbox/guides/docker-in-docker/
+            "artifacts-ci-act",
             {
               cwd: "/workspace/repo",
               env: {

@@ -10,12 +10,12 @@ Start local development:
 pnpm dev
 ```
 
-This runs the `ci`, `git`, and local Docker proxy apps through Portless monorepo mode. The Docker proxy is not exposed through Portless; it provides the Unix socket needed for local Sandbox Docker-in-Docker.
+This runs the `ci`, `git`, and local Docker proxy apps. The Docker proxy provides the Unix socket needed for local Sandbox Docker-in-Docker.
 
 The local endpoints are:
 
-- `https://ci.localhost` creates Artifacts repos and setup commands.
-- `https://git.localhost` accepts Git smart-HTTP pushes.
+- `http://ci.localhost:8787` creates Artifacts repos and setup commands.
+- `http://git.localhost:8788` accepts Git smart-HTTP pushes.
 
 `apps/ci/.env` must include deploy credentials for Agent CI workflows that deploy through Wrangler. The token needs Workers deploy permissions for the account.
 
@@ -40,14 +40,8 @@ Expected output includes side-band status lines like:
 ```text
 remote: 📦 production/vite-plus-<timestamp>
 remote: 🗒️ commit <sha>
-remote: 🌐 https://ci.localhost/runs/<id>
+remote: 🌐 http://ci.localhost:8787/runs/<id>
 remote: $ act --action-offline-mode --pull=false -P ubuntu-latest=catthehacker/ubuntu:act-latest --container-options '--network=host'
-```
-
-If Git cannot verify the local Portless certificate, trust the Portless CA once in your shell startup file:
-
-```bash
-export GIT_SSL_CAINFO="$HOME/.portless/ca.pem"
 ```
 
 After the push, the Git Worker starts a Workflow that clones the Artifacts repo into Sandbox and runs the repo's GitHub Actions workflow through `act`:

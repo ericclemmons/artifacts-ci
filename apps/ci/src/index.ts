@@ -10,7 +10,7 @@ import { ensureRepo } from "./utils/ensureRepo";
 import { appendRunLog, resetRunLog } from "./utils/runLog";
 
 const app = new Hono<{ Bindings: Env }>();
-const CI_BASE_URL = "https://ci.localhost";
+const CI_BASE_URL = "http://ci.localhost:8787";
 
 type CreateRunRequest = {
   namespace?: string;

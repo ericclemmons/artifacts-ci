@@ -6,34 +6,17 @@
   "scripts": {
     "build": "vp run -r build",
     "check": "vp fmt && vp run -r lint && vp run -r test && vp run -r build",
-    "dev": "portless",
+    "dev": "pnpm --parallel --filter docker-proxy --filter ci --filter git dev",
     "lint": "vp run -r lint",
     "prepare": "vp config",
     "smoke": "./scripts/smoke-test.sh $1",
     "test": "vp run -r test"
   },
   "devDependencies": {
-    "portless": "^0.11.1",
     "vite-plus": "catalog:"
   },
   "engines": {
     "node": ">=22.12.0"
   },
-  "packageManager": "pnpm@10.33.2",
-  "portless": {
-    "apps": {
-      "apps/ci": {
-        "name": "ci",
-        "appPort": 8787
-      },
-      "apps/git": {
-        "name": "git",
-        "appPort": 8788
-      },
-      "apps/proxy": {
-        "name": "docker-proxy",
-        "proxy": false
-      }
-    }
-  }
+  "packageManager": "pnpm@10.33.2"
 }

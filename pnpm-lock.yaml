@@ -30,9 +30,6 @@ importers:
 
   .:
     devDependencies:
-      portless:
-        specifier: ^0.11.1
-        version: 0.11.1
       vite-plus:
         specifier: 'catalog:'
         version: 0.1.19(@opentelemetry/api@1.9.0)(@types/node@25.6.0)(esbuild@0.27.3)(jiti@2.6.1)(typescript@6.0.3)(vite@8.0.10(@types/node@25.6.0)(esbuild@0.27.3)(jiti@2.6.1)(yaml@2.8.3))(yaml@2.8.3)
@@ -52,9 +49,9 @@ importers:
       '@types/node':
         specifier: 'catalog:'
         version: 24.12.2
-      portless:
-        specifier: ^0.11.1
-        version: 0.11.1
+      copy-certs-to-wrangler:
+        specifier: workspace:*
+        version: link:../../packages/copy-certs-to-wrangler
       typescript:
         specifier: ~6.0.2
         version: 6.0.3
@@ -67,9 +64,6 @@ importers:
 
   apps/git:
     devDependencies:
-      portless:
-        specifier: ^0.11.1
-        version: 0.11.1
       typescript:
         specifier: ~6.0.2
         version: 6.0.3
@@ -78,6 +72,18 @@ importers:
         version: 4.86.0(@cloudflare/workers-types@4.20260426.1)
 
   apps/proxy: {}
+
+  packages/copy-certs-to-wrangler:
+    devDependencies:
+      '@types/node':
+        specifier: 'catalog:'
+        version: 24.12.2
+      typescript:
+        specifier: ~6.0.2
+        version: 6.0.3
+      vite-plus:
+        specifier: 'catalog:'
+        version: 0.1.19(@opentelemetry/api@1.9.0)(@types/node@24.12.2)(esbuild@0.27.3)(jiti@2.6.1)(typescript@6.0.3)(vite@8.0.10(@types/node@24.12.2)(esbuild@0.27.3)(jiti@2.6.1)(yaml@2.8.3))(yaml@2.8.3)
 
   packages/utils:
     devDependencies:
@@ -1912,12 +1918,6 @@ packages:
     resolution: {integrity: sha512-LKWqWJRhstyYo9pGvgor/ivk2w94eSjE3RGVuzLGlr3NmD8bf7RcYGze1mNdEHRP6TRP6rMuDHk5t44hnTRyow==}
     engines: {node: '>=14.19.0'}
 
-  portless@0.11.1:
-    resolution: {integrity: sha512-A/U6sBo/aC+MDoLjVTzAUeB18KTzJQs7z+MnuyyCjJTOZoCh9xZzOjSqUPA+aWS0uS3UytWPrNLA5AO96TzuKQ==}
-    engines: {node: '>=20'}
-    os: [darwin, linux, win32]
-    hasBin: true
-
   postcss@8.5.12:
     resolution: {integrity: sha512-W62t/Se6rA0Az3DfCL0AqJwXuKwBeYg6nOaIgzP+xZ7N5BFCI7DYi1qs6ygUYT6rvfi6t9k65UMLJC+PHZpDAA==}
     engines: {node: ^10 || ^12 || >=14}
@@ -3698,8 +3698,6 @@ snapshots:
   pkce-challenge@5.0.1: {}
 
   pngjs@7.0.0: {}
-
-  portless@0.11.1: {}
 
   postcss@8.5.12:
     dependencies:

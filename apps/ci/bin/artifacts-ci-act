@@ -1,0 +1,55 @@
+#!/bin/sh
+set -eu
+
+# Wrapper around `act` for the Cloudflare Sandbox Docker-in-Docker image.
+#
+# The Sandbox image is one container.
+# `act` starts a second, nested job container for GitHub Actions steps.
+# The nested job container does not automatically inherit this image's CA store.
+# The nested job container also needs host networking to reach the DinD daemon.
+#
+# Keep this wrapper as the single place for `act` container plumbing.
+# Workflow code should only pass workflow-level arguments.
+
+# Use the OS CA bundle that was built into this Sandbox image.
+ca_file=/etc/ssl/certs/ca-certificates.crt
+
+# Also mount the CA directory because some TLS clients scan hashed cert files.
+ca_dir=/etc/ssl/certs
+
+# Vite+'s native Node downloader currently uses a TLS stack that may not honor
+# the usual CA env vars in intercepted-TLS environments.
+# Terminate TLS in this Sandbox container, which has the local CA installed.
+# The nested job container then reads Node dist files over local HTTP.
+NODE_EXTRA_CA_CERTS="$ca_file" node /usr/local/bin/node-dist-mirror.js >/tmp/node-dist-mirror.log 2>&1 &
+
+# act's default image is intentionally tiny and often lacks tooling expected by common GitHub Actions.
+# `catthehacker/ubuntu:act-latest` is the standard full-featured local runner.
+# https://nektosact.com/usage/runners.html
+runner_image=${ARTIFACTS_CI_ACT_RUNNER_IMAGE:-catthehacker/ubuntu:act-latest}
+
+# These options are for the nested job container, not this Sandbox container.
+# Use host networking so the job can reach Docker-in-Docker and local mirrors.
+container_options="--network=host"
+# Mount the hashed CA directory for tools that scan system trust directories.
+container_options="$container_options -v $ca_dir:$ca_dir:ro"
+# Mount source CA files because hashed entries may symlink back to this path.
+container_options="$container_options -v /usr/local/share/ca-certificates:/usr/local/share/ca-certificates:ro"
+# Route Vite+'s Node runtime downloads through the local mirror above.
+container_options="$container_options -e VP_NODE_DIST_MIRROR=http://127.0.0.1:18080/dist"
+# Standard CA variables for OpenSSL/curl/Python/Node/Rust/Git/Nix-based tools.
+container_options="$container_options -e SSL_CERT_FILE=$ca_file"
+container_options="$container_options -e SSL_CERT_DIR=$ca_dir"
+container_options="$container_options -e REQUESTS_CA_BUNDLE=$ca_file"
+container_options="$container_options -e NODE_EXTRA_CA_CERTS=$ca_file"
+container_options="$container_options -e CURL_CA_BUNDLE=$ca_file"
+container_options="$container_options -e CARGO_HTTP_CAINFO=$ca_file"
+container_options="$container_options -e GIT_SSL_CAINFO=$ca_file"
+container_options="$container_options -e NIX_SSL_CERT_FILE=$ca_file"
+
+exec /usr/bin/act \
+  --action-offline-mode \
+  --pull=false \
+  -P "ubuntu-latest=$runner_image" \
+  --container-options "$container_options" \
+  "$@"

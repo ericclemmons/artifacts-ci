@@ -6,7 +6,8 @@ export function getUpstream(headers: Headers, namespace: string, repoName: strin
     return {
       ok: false as const,
       status: 401,
-      message: "Missing Artifacts token. Run the setup command from https://ci.localhost first.\n",
+      message:
+        "Missing Artifacts token. Run the setup command from http://ci.localhost:8787 first.\n",
     };
   }
 
@@ -15,7 +16,7 @@ export function getUpstream(headers: Headers, namespace: string, repoName: strin
       ok: false as const,
       status: 400,
       message:
-        "Missing or invalid X-Artifacts-Remote header. Run the setup command from https://ci.localhost first.\n",
+        "Missing or invalid X-Artifacts-Remote header. Run the setup command from http://ci.localhost:8787 first.\n",
     };
   }
 

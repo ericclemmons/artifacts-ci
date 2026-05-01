@@ -1,5 +1,5 @@
 const DEFAULT_NAMESPACE = "production";
-const GIT_BASE_URL = "https://git.localhost";
+const GIT_BASE_URL = "http://git.localhost:8788";
 
 type RepoCredentials = {
   remote: string | undefined;
