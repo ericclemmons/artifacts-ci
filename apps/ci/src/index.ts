@@ -7,7 +7,7 @@ import { Hono } from "hono";
 import { cleanRepoName } from "./utils/cleanRepoName";
 import { createRepoSetup, createRepoSetupScript } from "./utils/createRepoSetup";
 import { ensureRepo } from "./utils/ensureRepo";
-import { appendRunLog } from "./utils/runLog";
+import { appendRunLog, resetRunLog } from "./utils/runLog";
 
 const app = new Hono<{ Bindings: Env }>();
 const CI_BASE_URL = "https://ci.localhost";
@@ -52,7 +52,9 @@ app.get("/runs/:id", (context) => {
   return new Response(streamRunText(runId, context.env), {
     headers: {
       "Cache-Control": "no-store",
+      "Content-Encoding": "identity",
       "Content-Type": "text/plain; charset=utf-8",
+      "X-Content-Type-Options": "nosniff",
     },
   });
 });
@@ -63,7 +65,9 @@ app.get("/runs/:id/stream", (context) => {
   return new Response(streamRunText(runId, context.env), {
     headers: {
       "Cache-Control": "no-store",
+      "Content-Encoding": "identity",
       "Content-Type": "text/plain; charset=utf-8",
+      "X-Content-Type-Options": "nosniff",
     },
   });
 });
@@ -77,15 +81,17 @@ app.post("/internal/runs", async (context) => {
     return context.text("Missing run parameters\n", 400);
   }
 
-  const runId = crypto.randomUUID();
+  const runId = body.commitSha ?? crypto.randomUUID();
+  const workflowId = `${runId}-${crypto.randomUUID()}`;
   const runUrl = `${CI_BASE_URL}/runs/${runId}`;
 
+  await resetRunLog(runId);
   await appendRunLog(runId, `📦 ${namespace}/${repo}`);
   await appendRunLog(runId, `🗒️ commit ${body.commitSha ?? "unknown"}`);
   await appendRunLog(runId, `🌐 ${runUrl}`);
 
   await context.env.DEPLOY_WORKFLOW.create({
-    id: runId,
+    id: workflowId,
     params: {
       runId,
       namespace,

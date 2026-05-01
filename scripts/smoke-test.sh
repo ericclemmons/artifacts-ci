@@ -17,5 +17,13 @@ git init -b main
 git add .
 git commit -m "Initial smoke test fixture"
 
+for _ in {1..30}; do
+  if curl -ksSf https://ci.localhost/ >/dev/null 2>&1; then
+    break
+  fi
+
+  sleep 1
+done
+
 curl -ksSf "https://ci.localhost/repos/$repo.sh" | bash
 git push cloudflare

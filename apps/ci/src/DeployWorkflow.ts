@@ -45,7 +45,6 @@ export class DeployWorkflow extends WorkflowEntrypoint<Env, DeployParams> {
 
       const output = await runSandboxCommand(
         event.payload.runId,
-        "checkout",
         sandboxName,
         getCheckoutCommand(cloneRemote, queued.commitSha),
       );
@@ -58,14 +57,15 @@ export class DeployWorkflow extends WorkflowEntrypoint<Env, DeployParams> {
     const actions = await step.do(
       "Run GitHub Actions",
       { retries: { limit: 0, delay: 0 } },
-      async () =>
-        runSandboxCommand(
+      async () => {
+        await runSandboxCommand(event.payload.runId, sandboxName, "cd /workspace/repo");
+
+        return runSandboxCommand(
           event.payload.runId,
-          "act",
           sandboxName,
-          `cd /workspace/repo && ${actCommand}`,
-          [],
+          "act -P ubuntu-latest=catthehacker/ubuntu:act-latest --container-options '--network=host'",
           {
+            cwd: "/workspace/repo",
             env: {
               CLOUDFLARE_API_BASE_URL: "http://cloudflare-api.sandbox/client/v4",
               CLOUDFLARE_ACCOUNT_ID: envPlaceholders.CLOUDFLARE_ACCOUNT_ID,
@@ -75,7 +75,8 @@ export class DeployWorkflow extends WorkflowEntrypoint<Env, DeployParams> {
               GITHUB_SHA: queued.commitSha ?? "",
             },
           },
-        ),
+        );
+      },
     );
 
     const cleanup = await step.do("destroy sandbox", async () => {
@@ -99,10 +100,8 @@ export class DeployWorkflow extends WorkflowEntrypoint<Env, DeployParams> {
 
 async function runSandboxCommand(
   runId: string,
-  label: string,
   sandboxName: string,
   command: string,
-  redactions: string[] = [],
   options?: SandboxCommandOptions,
 ) {
   await appendRunLog(runId, `$ ${command}`);
@@ -115,7 +114,7 @@ async function runSandboxCommand(
 
     for await (const event of parseSSEStream<ExecEvent>(stream)) {
       if (event.type === "stdout" || event.type === "stderr") {
-        const data = redact(event.data ?? "", redactions);
+        const data = event.data ?? "";
         output.push(data);
         await appendRunLog(runId, data);
       }
@@ -125,7 +124,7 @@ async function runSandboxCommand(
       }
 
       if (event.type === "error") {
-        throw new Error(redact(event.error ?? "Sandbox command failed", redactions));
+        throw new Error(event.error ?? "Sandbox command failed");
       }
     }
 
@@ -135,20 +134,13 @@ async function runSandboxCommand(
 
     return output.join("");
   } catch (error) {
-    await appendRunLog(runId, `${label} failed: ${getErrorMessage(error)}`);
+    await appendRunLog(runId, `failed: ${getErrorMessage(error)}`);
     await closeRunLog(runId);
     throw error;
   }
 }
 
 type SandboxCommandOptions = StreamOptions & { env?: Record<string, string> };
-
-const actCommand =
-  "docker version && act -P ubuntu-latest=catthehacker/ubuntu:act-latest --container-options '--network=host'";
-
-function redact(value: string, redactions: string[]) {
-  return redactions.reduce((redacted, secret) => redacted.replaceAll(secret, "<redacted>"), value);
-}
 
 function getErrorMessage(error: unknown) {
   return error instanceof Error ? error.message : "unknown error";

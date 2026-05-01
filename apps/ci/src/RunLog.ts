@@ -29,6 +29,11 @@ export class RunLog extends Agent<Env, RunLogState> {
       return new Response(null, { status: 204 });
     }
 
+    if (request.method === "POST" && url.pathname === "/reset") {
+      await this.reset();
+      return new Response(null, { status: 204 });
+    }
+
     if (request.method === "POST" && url.pathname === "/close") {
       await this.close();
       return new Response(null, { status: 204 });
@@ -50,6 +55,12 @@ export class RunLog extends Agent<Env, RunLogState> {
     await this.broadcastRunEvent(event);
   }
 
+  private async reset() {
+    this.setState({ closed: false, events: [] });
+    await Promise.all([...this.subscribers].map((writer) => writer.close()));
+    this.subscribers.clear();
+  }
+
   private async close() {
     this.setState({ ...this.state, closed: true });
     await this.broadcastRunEvent({ id: 0, line: "event: close" });
@@ -67,7 +78,10 @@ export class RunLog extends Agent<Env, RunLogState> {
     return new Response(readable, {
       headers: {
         "Cache-Control": "no-store",
+        "Content-Encoding": "identity",
         "Content-Type": "text/event-stream",
+        "X-Accel-Buffering": "no",
+        "X-Content-Type-Options": "nosniff",
       },
     });
   }
