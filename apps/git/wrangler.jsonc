@@ -1,6 +1,6 @@
 {
   "$schema": "../../node_modules/wrangler/config-schema.json",
-  "name": "git-push-cf-git",
+  "name": "artifacts-ci-git",
   "main": "src/index.ts",
   "compatibility_date": "2026-04-28",
   "compatibility_flags": ["nodejs_compat"],
@@ -10,7 +10,7 @@
   "services": [
     {
       "binding": "CI",
-      "service": "git-push-cf-ci",
+      "service": "artifacts-ci-ci",
     },
   ],
 }

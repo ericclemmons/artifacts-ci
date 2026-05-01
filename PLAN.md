@@ -159,7 +159,7 @@
 - Current runner: `act -P ubuntu-latest=catthehacker/ubuntu:act-latest --container-options '--network=host'` in `/workspace/repo`.
 - Reference: https://developers.cloudflare.com/sandbox/guides/docker-in-docker/#use-docker-in-your-sandbox
 - Done: preserve Wrangler-generated asset upload JWTs while replacing only the Sandbox placeholder API token.
-- Done: smoke validation curls `https://git-push-cf.ericclemmons.workers.dev` after deploy.
+- Done: smoke validation curls `https://artifacts-ci.ericclemmons.workers.dev` after deploy.
 - Deferred: deployment deletion is intentionally out of scope for now because Git ref-delete mapping is too dangerous.
 
 **Phase 5B: Sandbox Warm Cache / Backup**

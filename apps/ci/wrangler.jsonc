@@ -1,6 +1,6 @@
 {
   "$schema": "../../node_modules/wrangler/config-schema.json",
-  "name": "git-push-cf-ci",
+  "name": "artifacts-ci-ci",
   "main": "src/index.ts",
   "compatibility_date": "2026-04-28",
   "compatibility_flags": ["nodejs_compat"],
@@ -20,21 +20,21 @@
   "kv_namespaces": [
     {
       "binding": "REPO_TOKENS",
-      "id": "git_push_cf_repo_tokens",
+      "id": "artifacts_ci_repo_tokens",
     },
     {
       "binding": "REPO_REMOTES",
-      "id": "git_push_cf_repo_remotes",
+      "id": "artifacts_ci_repo_remotes",
     },
     {
       "binding": "CACHE_BACKUPS",
-      "id": "git_push_cf_cache_backups",
+      "id": "artifacts_ci_cache_backups",
     },
   ],
   "r2_buckets": [
     {
       "binding": "BACKUP_BUCKET",
-      "bucket_name": "git-push-cf-cache-backups",
+      "bucket_name": "artifacts-ci-cache-backups",
     },
   ],
   "containers": [
@@ -69,7 +69,7 @@
   ],
   "workflows": [
     {
-      "name": "git-push-cf-deploy",
+      "name": "artifacts-ci-deploy",
       "binding": "DEPLOY_WORKFLOW",
       "class_name": "DeployWorkflow",
     },

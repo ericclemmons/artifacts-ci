@@ -1,4 +1,4 @@
-# git-push-cf
+# artifacts-ci
 
 Push a Git repo to Cloudflare, back it with Artifacts, and trigger a Workflow that runs commands in Cloudflare Sandbox.
 
@@ -41,7 +41,7 @@ Expected output includes side-band status lines like:
 remote: 📦 production/vite-plus-<timestamp>
 remote: 🗒️ commit <sha>
 remote: 🌐 https://ci.localhost/runs/<id>
-remote: $ cd /workspace/repo && docker version && act -P ubuntu-latest=catthehacker/ubuntu:act-latest --container-options '--network=host'
+remote: $ act --action-offline-mode --pull=false -P ubuntu-latest=catthehacker/ubuntu:act-latest --container-options '--network=host'
 ```
 
 If Git cannot verify the local Portless certificate, trust the Portless CA once in your shell startup file:
@@ -54,7 +54,7 @@ After the push, the Git Worker starts a Workflow that clones the Artifacts repo 
 
 ```bash
 git clone <artifacts-remote> /workspace/repo
-act -P ubuntu-latest=catthehacker/ubuntu:act-latest --container-options '--network=host'
+act --action-offline-mode --pull=false -P ubuntu-latest=catthehacker/ubuntu:act-latest --container-options '--network=host'
 ```
 
 Wrangler may mint short-lived upload tokens while deploying static assets from workflow steps. The CI Worker keeps those Wrangler-generated tokens intact while replacing only the placeholder API token passed into the Sandbox.
