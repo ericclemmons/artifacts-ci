@@ -131,6 +131,8 @@
 - Done: add outbound credential injection for Cloudflare API using Worker-side deploy secrets and Wrangler `CLOUDFLARE_API_BASE_URL` pointed at `http://cloudflare-api.sandbox/client/v4`.
 - Done: replace deploy placeholder with `npx --yes wrangler deploy` and no Workflow retries for the deploy step.
 - Done: replace hard-coded Sandbox install/lint/test/deploy sequence with `npx --yes @redwoodjs/agent-ci run --workflow .github/workflows/ci.yml`.
+- Current GitHub Actions runner blocker: validate whether Cloudflare's Dockerfile `CMD` starts Docker for Sandbox exec sessions locally; testing `act --container-options '--network=host'` as an alternative, but it still depends on Docker startup.
+- Reference: https://developers.cloudflare.com/sandbox/guides/docker-in-docker/#use-docker-in-your-sandbox
 - Done: preserve Wrangler-generated asset upload JWTs while replacing only the Sandbox placeholder API token.
 - Done: smoke validation curls `https://git-push-cf.ericclemmons.workers.dev` after deploy.
 - Deferred: deployment deletion is intentionally out of scope for now because Git ref-delete mapping is too dangerous.
@@ -142,6 +144,8 @@
 - Done: move the RunLog Agent and SSE source from `apps/git` to `apps/ci` so `ci` owns all run state.
 - Keep all Workflow/Sandbox output in the run log stream so Git side-band and UI show the same events.
 - Done: add ANSI color support in Git side-band and styled browser log output without changing raw log storage.
+- Add a browser terminal link for each run using the Sandbox xterm.js addon pattern: https://developers.cloudflare.com/sandbox/guides/browser-terminals/#connect-with-xtermjs-and-sandboxaddon
+- Open question: whether a browser terminal can join/follow the exact Workflow command session; likely it can only connect to the same Sandbox instance with a separate shell.
 - Tail Workers are observability/debug option, not product state initially.
 
 **Phase 6B: App Boundary Refactor**

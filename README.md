@@ -10,7 +10,7 @@ Start local development:
 pnpm dev
 ```
 
-This runs the `ci` and `git` Workers through Portless monorepo mode. Package `dev` scripts are plain `wrangler dev` commands; run them directly if you do not need Portless hostnames.
+This runs the `ci`, `git`, and local Docker proxy apps through Portless monorepo mode. The Docker proxy is not exposed through Portless; it provides the Unix socket needed for local Sandbox Docker-in-Docker.
 
 The local endpoints are:
 
@@ -18,6 +18,8 @@ The local endpoints are:
 - `https://git.localhost` accepts Git smart-HTTP pushes.
 
 `apps/ci/.env` must include deploy credentials for Agent CI workflows that deploy through Wrangler. The token needs Workers deploy permissions for the account.
+
+The Docker proxy forwards to the active Docker context socket, or `DOCKER_SOCKET` if set, and injects `HostConfig.Privileged=true` into local container creation requests.
 
 ## Smoke Test
 
@@ -39,7 +41,7 @@ Expected output includes side-band status lines like:
 remote: 📦 production/vite-plus-<timestamp>
 remote: 🗒️ commit <sha>
 remote: 🌐 https://ci.localhost/runs/<id>
-remote: $ npx --yes @redwoodjs/agent-ci run --workflow .github/workflows/ci.yml
+remote: $ cd /workspace/repo && docker version && act -P ubuntu-latest=catthehacker/ubuntu:act-latest --container-options '--network=host'
 ```
 
 If Git cannot verify the local Portless certificate, trust the Portless CA once in your shell startup file:
@@ -48,11 +50,11 @@ If Git cannot verify the local Portless certificate, trust the Portless CA once 
 export GIT_SSL_CAINFO="$HOME/.portless/ca.pem"
 ```
 
-After the push, the Git Worker starts a Workflow that clones the Artifacts repo into Sandbox and runs the repo's GitHub Actions workflow through Agent CI:
+After the push, the Git Worker starts a Workflow that clones the Artifacts repo into Sandbox and runs the repo's GitHub Actions workflow through `act`:
 
 ```bash
 git clone <artifacts-remote> /workspace/repo
-npx --yes @redwoodjs/agent-ci run --workflow .github/workflows/ci.yml
+act -P ubuntu-latest=catthehacker/ubuntu:act-latest --container-options '--network=host'
 ```
 
 Wrangler may mint short-lived upload tokens while deploying static assets from workflow steps. The CI Worker keeps those Wrangler-generated tokens intact while replacing only the placeholder API token passed into the Sandbox.

@@ -29,6 +29,10 @@
       "apps/git": {
         "name": "git",
         "appPort": 8788
+      },
+      "apps/proxy": {
+        "name": "docker-proxy",
+        "proxy": false
       }
     }
   }

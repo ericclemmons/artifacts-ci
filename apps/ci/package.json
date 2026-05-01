@@ -6,7 +6,7 @@
   "scripts": {
     "build": "tsc --noEmit",
     "deploy": "wrangler deploy",
-    "dev": "wrangler dev --port 8787 --inspector-port 9231",
+    "dev": "DOCKER_HOST=\"unix://$PWD/../proxy/.wrangler/docker-privileged.sock\" wrangler dev --port 8787 --inspector-port 9231",
     "lint": "vp lint"
   },
   "dependencies": {

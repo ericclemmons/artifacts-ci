@@ -74,6 +74,8 @@ importers:
         specifier: ^4.86.0
         version: 4.86.0(@cloudflare/workers-types@4.20260426.1)
 
+  apps/proxy: {}
+
   packages/utils:
     devDependencies:
       '@types/node':

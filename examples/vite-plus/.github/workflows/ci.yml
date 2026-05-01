@@ -8,6 +8,8 @@ on:
 jobs:
   check:
     runs-on: ubuntu-latest
+    env:
+      npm_config_store_dir: /tmp/pnpm-store
     steps:
       - uses: actions/checkout@v4
       - uses: voidzero-dev/setup-vp@v1

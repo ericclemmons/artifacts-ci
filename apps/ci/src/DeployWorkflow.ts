@@ -48,7 +48,6 @@ export class DeployWorkflow extends WorkflowEntrypoint<Env, DeployParams> {
         "checkout",
         sandboxName,
         getCheckoutCommand(cloneRemote, queued.commitSha),
-        `$ git clone ${cloneRemote} /workspace/repo${queued.commitSha ? ` && git checkout ${queued.commitSha}` : ""}`,
       );
 
       await deleteArtifactsGitParams(queued.namespace, queued.repo);
@@ -56,16 +55,15 @@ export class DeployWorkflow extends WorkflowEntrypoint<Env, DeployParams> {
       return output;
     });
 
-    const agentCi = await step.do(
+    const actions = await step.do(
       "Run GitHub Actions",
       { retries: { limit: 0, delay: 0 } },
       async () =>
         runSandboxCommand(
           event.payload.runId,
-          "agent-ci",
+          "act",
           sandboxName,
-          "cd /workspace/repo && npx --yes @redwoodjs/agent-ci run --workflow .github/workflows/ci.yml",
-          "$ npx --yes @redwoodjs/agent-ci run --workflow .github/workflows/ci.yml",
+          `cd /workspace/repo && ${actCommand}`,
           [],
           {
             env: {
@@ -92,7 +90,7 @@ export class DeployWorkflow extends WorkflowEntrypoint<Env, DeployParams> {
       status: "planned",
       steps: {
         checkout,
-        agentCi,
+        actions,
         cleanup,
       },
     };
@@ -104,11 +102,10 @@ async function runSandboxCommand(
   label: string,
   sandboxName: string,
   command: string,
-  displayCommand: string,
   redactions: string[] = [],
   options?: SandboxCommandOptions,
 ) {
-  await appendRunLog(runId, displayCommand);
+  await appendRunLog(runId, `$ ${command}`);
 
   try {
     const sandbox = getSandbox(env.Sandbox, sandboxName);
@@ -145,6 +142,9 @@ async function runSandboxCommand(
 }
 
 type SandboxCommandOptions = StreamOptions & { env?: Record<string, string> };
+
+const actCommand =
+  "docker version && act -P ubuntu-latest=catthehacker/ubuntu:act-latest --container-options '--network=host'";
 
 function redact(value: string, redactions: string[]) {
   return redactions.reduce((redacted, secret) => redacted.replaceAll(secret, "<redacted>"), value);
