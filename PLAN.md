@@ -53,6 +53,17 @@
 - Ensure focused tasks remain available, but do not make direct focused-task commands the default documentation path.
 - Update README command examples after the final root orchestration shape is chosen.
 
+**Phase 0C: Demo Deploy Orchestration**
+
+- Goal: make tomorrow's deployed demo repeatable from root commands.
+- Add root `pnpm deploy` as the stable deploy entry point.
+- Candidate implementation: recursive workspace deploy, where only packages with a `deploy` script run `wrangler deploy`.
+- `apps/ci` and `apps/git` should each own app-level `deploy` scripts that call `wrangler deploy` with their existing Wrangler configs.
+- Keep implementation compatible with plain `pnpm -r --if-present deploy`; Turborepo can wrap the same package scripts later.
+- Deploy order matters if `apps/git` has a Service Binding to `apps/ci`; confirm Wrangler can resolve deployed `ci` binding or deploy `ci` first.
+- Document required deployed resources: two Workers, CI Sandbox container, Workflow, RunLog Agent migration, KV namespaces, Artifacts binding, deploy secrets, routes/custom domains, and Access policy for CI.
+- Demo gate: from clean checkout, `pnpm install`, secrets configured, then `pnpm deploy` publishes both apps.
+
 **Phase 1: Git Worker + Side-Band**
 
 - Done: implement receive-pack discovery and push routes in `apps/git`.
@@ -71,6 +82,17 @@
 - Done: configure no-refspec UX: `git config --local remote.cloudflare.push HEAD`.
 - Done: validate plain `git push cloudflare` on current Git.
 - Next: decide whether setup should create environment remotes like `production`, `preview`, and `staging` instead of `cloudflare`.
+
+**Phase 1D: Deployed Onboarding with Access**
+
+- Deployed `apps/ci` will sit behind Cloudflare Access; `apps/git` should stay directly pushable for Git clients.
+- Setup script fetch is the open problem because `curl https://ci.../repos/<repo>.sh | bash` will hit Access.
+- Confirm behavior: plain `curl` will not open a browser for Access login; likely requires either existing Access cookies unsupported by curl, service tokens, or `cloudflared access` flow.
+- Candidate UX A: tell user to run `cloudflared access login https://ci.example.com`, then fetch setup with `cloudflared access curl https://ci.example.com/repos/<repo>.sh` if available/acceptable.
+- Candidate UX B: CI home screen behind Access lets user create/select repo, then copy a generated shell command from the browser.
+- Candidate UX C: expose a narrow unauthenticated setup endpoint with a one-time token, but avoid this for demo unless Access blocks the browser UX.
+- Preferred demo UX: protected CI home page with copyable install command, because browser Access login is natural and avoids making curl own auth.
+- Add clipboard-friendly setup command to CI home page before demo if time permits.
 
 **Phase 1B: isomorphic-git Spike**
 
@@ -132,10 +154,24 @@
 - Done: replace deploy placeholder with `npx --yes wrangler deploy` and no Workflow retries for the deploy step.
 - Done: replace hard-coded Sandbox install/lint/test/deploy sequence with `npx --yes @redwoodjs/agent-ci run --workflow .github/workflows/ci.yml`.
 - Current GitHub Actions runner blocker: validate whether Cloudflare's Dockerfile `CMD` starts Docker for Sandbox exec sessions locally; testing `act --container-options '--network=host'` as an alternative, but it still depends on Docker startup.
+- Current runner: `act -P ubuntu-latest=catthehacker/ubuntu:act-latest --container-options '--network=host'` in `/workspace/repo`.
 - Reference: https://developers.cloudflare.com/sandbox/guides/docker-in-docker/#use-docker-in-your-sandbox
 - Done: preserve Wrangler-generated asset upload JWTs while replacing only the Sandbox placeholder API token.
 - Done: smoke validation curls `https://git-push-cf.ericclemmons.workers.dev` after deploy.
 - Deferred: deployment deletion is intentionally out of scope for now because Git ref-delete mapping is too dangerous.
+
+**Phase 5B: Sandbox Warm Cache / Backup**
+
+- Goal: speed up demo runs by avoiding repeated Docker image pulls and action/tool downloads.
+- Act image cache likely lives inside the Sandbox container's Docker data root, usually `/var/lib/docker`, because Docker-in-Docker runs inside the Sandbox.
+- Act action cache likely lives under the Sandbox user's cache dir, observed as `/root/.cache/act` in logs.
+- Vite+/pnpm caches may live under `/root/.vite-plus`, `/root/.local/share/pnpm`, `/root/.cache`, or the workflow's configured store dir.
+- Use Sandbox backup/restore to create a warm image after bootstrapping Docker and pulling `catthehacker/ubuntu:act-latest`.
+- Reference: https://developers.cloudflare.com/sandbox/guides/backup-restore/#create-a-backup
+- Candidate warmup command: run `docker pull catthehacker/ubuntu:act-latest` and optionally pre-run a tiny `act` workflow to populate `/root/.cache/act`.
+- Restore warm backup at Workflow start before checkout, then run pushed repo in the restored Sandbox.
+- Open detail: decide backup identity/versioning, e.g. `act-cache-v1`, tied to Dockerfile digest plus runner image tag.
+- Demo shortcut: pre-warm locally/deployed once; if backup integration is risky, keep Docker layer cache benefit from long-lived Sandbox instances and document first-run cold start.
 
 **Phase 6: Runs UI and Logs**
 
