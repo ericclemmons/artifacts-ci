@@ -13,6 +13,10 @@
   - [ ] Put deploy behavior in `examples/vite-plus/.github/workflows/ci.yml`.
 - [ ] Support Agent CI as an alternative runner to `act`.
   - [ ] Reference: https://agent-ci.dev/
+- [ ] Evaluate the native GitHub Actions runner as a replacement for `act`.
+  - [ ] Reference: https://github.com/actions/runner
+  - [ ] Determine whether the runner can execute pushed repo workflows inside Sandbox without registering with GitHub.
+  - [ ] Compare compatibility, startup cost, caching behavior, and log streaming against `act`.
 
 ## Completed
 

@@ -28,12 +28,7 @@ export class DeployWorkflow extends WorkflowEntrypoint<Env, DeployParams> {
       status: "queued",
     }));
 
-    const sandboxName = getSandboxName(
-      queued.namespace,
-      queued.repo,
-      queued.commitSha,
-      event.payload.runId,
-    );
+    const sandboxName = getSandboxName(event.payload.runId);
 
     const cache = await step.do("restore sandbox cache", async () =>
       restoreSandboxCache(event.payload.runId, sandboxName),
@@ -158,7 +153,9 @@ async function runSandboxCommand(
     }
 
     if (exitCode !== 0) {
-      throw new Error(`Command failed with exit code ${exitCode}: ${command}`);
+      throw new Error(
+        `Run ${runId} failed in sandbox ${sandboxName} with exit code ${exitCode}: ${command}`,
+      );
     }
 
     return output.join("");
@@ -207,8 +204,8 @@ function getErrorMessage(error: unknown) {
   return error instanceof Error ? error.message : "unknown error";
 }
 
-function getSandboxName(namespace: string, repo: string, commitSha: string | null, runId: string) {
-  return `${namespace}-${repo}-${commitSha?.slice(0, 12) ?? runId}`;
+function getSandboxName(runId: string) {
+  return `run-${runId}`;
 }
 
 function getCheckoutCommand(remote: string, commitSha: string | null) {

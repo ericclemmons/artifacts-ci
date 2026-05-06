@@ -81,7 +81,7 @@ app.post("/internal/runs", async (context) => {
     return context.text("Missing run parameters\n", 400);
   }
 
-  const runId = body.commitSha ?? crypto.randomUUID();
+  const runId = crypto.randomUUID();
   const workflowId = `${runId}-${crypto.randomUUID()}`;
   const runUrl = `${CI_BASE_URL}/runs/${runId}`;
 
