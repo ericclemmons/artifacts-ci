@@ -63,10 +63,7 @@ export class DeployWorkflow extends WorkflowEntrypoint<Env, DeployParams> {
           return await runSandboxCommand(
             event.payload.runId,
             sandboxName,
-            // Use the Sandbox wrapper so nested Docker jobs get host networking
-            // plus any local CA bundle.
-            // https://developers.cloudflare.com/sandbox/guides/docker-in-docker/
-            "artifacts-ci-act",
+            getRunnerCommand(env.CI_RUNNER),
             {
               cwd: "/workspace/repo",
               env: {
@@ -180,9 +177,16 @@ async function restoreSandboxCache(runId: string, sandboxName: string) {
   }
 
   const backup = JSON.parse(value) as DirectoryBackup;
-  await getSandbox(env.Sandbox, sandboxName).restoreBackup(backup);
-  await appendRunLog(runId, `cache: restored ${backup.id}`);
-  return backup.id;
+
+  try {
+    await getSandbox(env.Sandbox, sandboxName).restoreBackup(backup);
+    await appendRunLog(runId, `cache: restored ${backup.id}`);
+    return backup.id;
+  } catch (error) {
+    await appendRunLog(runId, `cache: restore failed ${getErrorMessage(error)}`);
+    await env.CACHE_BACKUPS.delete(CACHE_BACKUP_KEY);
+    return "restore-failed";
+  }
 }
 
 async function saveSandboxCache(sandboxName: string) {
@@ -213,4 +217,8 @@ function getCheckoutCommand(remote: string, commitSha: string | null) {
     ? ` && cd /workspace/repo && git -c advice.detachedHead=false checkout ${commitSha}`
     : "";
   return `rm -rf /workspace/repo && git clone "${remote}" /workspace/repo${checkout}`;
+}
+
+function getRunnerCommand(runner: string | undefined) {
+  return runner === "act" ? "artifacts-ci-act" : "artifacts-ci-agent-ci";
 }

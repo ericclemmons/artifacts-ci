@@ -10,6 +10,9 @@
   "secrets": {
     "required": ["CLOUDFLARE_ACCOUNT_ID", "CLOUDFLARE_API_TOKEN"],
   },
+  "vars": {
+    "CI_RUNNER": "agent-ci",
+  },
   "artifacts": [
     {
       "binding": "ARTIFACTS",

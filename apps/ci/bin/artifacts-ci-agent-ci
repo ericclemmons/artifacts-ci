@@ -1,0 +1,68 @@
+#!/bin/sh
+set -eu
+
+# Spike wrapper for Agent CI inside Cloudflare Sandbox.
+#
+# Agent CI emulates GitHub's Actions service and feeds jobs to the official
+# runner binary. It still creates a Docker job container for Linux jobs, so the
+# runner image needs the same local CA treatment as the act job container.
+
+ca_file=/etc/ssl/certs/ca-certificates.crt
+runner_image=ghcr.io/actions/actions-runner:latest
+runner_image_cache=/workspace/.cache/docker-images/actions-runner-latest.tar
+
+mkdir -p /workspace/.cache/docker-images /workspace/.cache/pnpm-store
+chmod -R a+rwX /workspace/.cache
+chmod 1777 /workspace/.cache
+
+# Agent CI normally uses Docker bridge networking, but Sandbox networking only
+# worked reliably for the runner container with host networking in this spike.
+# In host mode, the runner reaches DTU and the Node dist mirror on localhost.
+NODE_DIST_MIRROR_HOST=0.0.0.0 NODE_EXTRA_CA_CERTS="$ca_file" node /usr/local/bin/node-dist-mirror.js >/tmp/node-dist-mirror.log 2>&1 &
+
+docker_network=host
+dtu_host=127.0.0.1
+extra_hosts="host.docker.internal:$dtu_host"
+
+for host in viteplus.dev registry.npmjs.org nodejs.org; do
+  ip=$(node -e "require('node:dns').lookup('$host', (error, address) => { if (!error) console.log(address) })")
+  if [ -n "$ip" ]; then
+    extra_hosts="$extra_hosts,$host:$ip"
+  fi
+done
+
+if ! docker image inspect "$runner_image" >/dev/null 2>&1 && [ -f "$runner_image_cache" ]; then
+  echo "Loading cached Agent CI runner image from $runner_image_cache"
+  docker load -i "$runner_image_cache"
+fi
+
+save_runner_image_cache() {
+  if [ ! -f "$runner_image_cache" ] && docker image inspect "$runner_image" >/dev/null 2>&1; then
+    echo "Saving Agent CI runner image cache to $runner_image_cache"
+    mkdir -p "$(dirname "$runner_image_cache")"
+    docker save -o "$runner_image_cache" "$runner_image"
+  fi
+}
+
+set +e
+env \
+  AGENT_CI_DOCKER_BRIDGE_GATEWAY="$dtu_host" \
+  AGENT_CI_DOCKER_EXTRA_HOSTS="$extra_hosts" \
+  AGENT_CI_DOCKER_NETWORK="$docker_network" \
+  AGENT_CI_DOCKER_BINDS="/workspace/.cache:/workspace/.cache,/etc/ssl/certs:/etc/ssl/certs:ro,/usr/local/share/ca-certificates:/usr/local/share/ca-certificates:ro" \
+  AGENT_CI_DOCKER_ENV="VP_NODE_DIST_MIRROR=http://127.0.0.1:18080/dist,SSL_CERT_FILE=$ca_file,SSL_CERT_DIR=/etc/ssl/certs,REQUESTS_CA_BUNDLE=$ca_file,NODE_EXTRA_CA_CERTS=$ca_file,CURL_CA_BUNDLE=$ca_file,CARGO_HTTP_CAINFO=$ca_file,GIT_SSL_CAINFO=$ca_file,NIX_SSL_CERT_FILE=$ca_file" \
+  VP_NODE_DIST_MIRROR=http://127.0.0.1:18080/dist \
+  SSL_CERT_FILE="$ca_file" \
+  SSL_CERT_DIR=/etc/ssl/certs \
+  REQUESTS_CA_BUNDLE="$ca_file" \
+  NODE_EXTRA_CA_CERTS="$ca_file" \
+  CURL_CA_BUNDLE="$ca_file" \
+  CARGO_HTTP_CAINFO="$ca_file" \
+  GIT_SSL_CAINFO="$ca_file" \
+  NIX_SSL_CERT_FILE="$ca_file" \
+  agent-ci run --workflow .github/workflows/ci.yml --json "$@"
+status=$?
+set -e
+
+save_runner_image_cache
+exit "$status"

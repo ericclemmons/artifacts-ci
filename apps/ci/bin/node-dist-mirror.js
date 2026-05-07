@@ -15,6 +15,7 @@
 const http = require("node:http");
 const https = require("node:https");
 
+const host = process.env.NODE_DIST_MIRROR_HOST ?? "127.0.0.1";
 const port = Number(process.env.NODE_DIST_MIRROR_PORT ?? 18080);
 
 const server = http.createServer((request, response) => {
@@ -43,4 +44,4 @@ const server = http.createServer((request, response) => {
   request.pipe(upstream);
 });
 
-server.listen(port, "127.0.0.1");
+server.listen(port, host);

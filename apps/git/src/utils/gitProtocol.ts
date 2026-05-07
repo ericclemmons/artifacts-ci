@@ -23,10 +23,27 @@ export function getPushedCommitSha(body: ArrayBuffer | undefined) {
 
 export function encodeSideBandProgress(lines: string[]) {
   const encoder = new TextEncoder();
-  const chunks = lines.map((line) =>
-    pktLine(concatBytes(new Uint8Array([2]), encoder.encode(`${line}\n`))),
-  );
+  const chunks = lines.flatMap((line) => sideBandPackets(2, encoder.encode(`${line}\n`)));
   return concatBytes(...chunks);
+}
+
+function sideBandPackets(channel: number, payload: Uint8Array) {
+  const maxPayloadBytes = 60_000;
+  const chunks: Uint8Array[] = [];
+
+  for (let offset = 0; offset < payload.byteLength; offset += maxPayloadBytes) {
+    chunks.push(
+      pktLine(
+        concatBytes(new Uint8Array([channel]), payload.slice(offset, offset + maxPayloadBytes)),
+      ),
+    );
+  }
+
+  if (payload.byteLength === 0) {
+    chunks.push(pktLine(new Uint8Array([channel])));
+  }
+
+  return chunks;
 }
 
 export function insertBeforeFlush(body: Uint8Array, insertion: Uint8Array) {

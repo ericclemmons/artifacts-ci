@@ -27,13 +27,49 @@ RUN --mount=type=bind,source=.,target=/build-context \
 RUN apk add --no-cache nodejs npm git tar act squashfs-tools && \
   if command -v corepack >/dev/null 2>&1; then corepack enable pnpm; else npm install -g pnpm@10.33.2; fi
 
+RUN npm install -g @redwoodjs/agent-ci@0.15.0
+
+# Agent CI does not currently expose a Linux job-container network mode option.
+# In Sandbox, default bridge networking cannot reliably reach outbound HTTPS.
+# Patch the pinned spike dependency so `AGENT_CI_DOCKER_NETWORK=host` works.
+RUN node - <<'EOF'
+const fs = require("node:fs");
+const path = require("node:path");
+const file = path.join(
+  fs.realpathSync(require("node:child_process").execSync("npm root -g", { encoding: "utf8" }).trim()),
+  "@redwoodjs/agent-ci/dist/runner/local-job.js",
+);
+const source = fs.readFileSync(file, "utf8");
+const patches = [
+  [
+    "...(serviceCtx ? { NetworkMode: serviceCtx.networkName } : {}),",
+    "...(process.env.AGENT_CI_DOCKER_NETWORK ? { NetworkMode: process.env.AGENT_CI_DOCKER_NETWORK } : serviceCtx ? { NetworkMode: serviceCtx.networkName } : {}),",
+  ],
+  [
+    "Env: [...containerEnv, ...extraContainerOpts.env],",
+    "Env: [...containerEnv, ...extraContainerOpts.env, ...(process.env.AGENT_CI_DOCKER_ENV ? process.env.AGENT_CI_DOCKER_ENV.split(',').filter(Boolean) : [])],",
+  ],
+  [
+    "Binds: containerBinds,",
+    "Binds: [...containerBinds, ...(process.env.AGENT_CI_DOCKER_BINDS ? process.env.AGENT_CI_DOCKER_BINDS.split(',').filter(Boolean) : [])],",
+  ],
+];
+let next = source;
+for (const [before, after] of patches) {
+  if (!next.includes(before)) throw new Error(`Agent CI patch target not found: ${before}`);
+  next = next.replace(before, after);
+}
+fs.writeFileSync(file, next);
+EOF
+
 # act runs job steps in a nested container.
 # The Sandbox image trust store is not enough for that container.
 # This wrapper adds Docker-in-Docker host networking from the Sandbox guide.
 # This wrapper passes the local CA store through to the job container.
 COPY bin/node-dist-mirror.js /usr/local/bin/node-dist-mirror.js
 COPY bin/artifacts-ci-act /usr/local/bin/artifacts-ci-act
-RUN chmod +x /usr/local/bin/artifacts-ci-act
+COPY bin/artifacts-ci-agent-ci /usr/local/bin/artifacts-ci-agent-ci
+RUN chmod +x /usr/local/bin/artifacts-ci-act /usr/local/bin/artifacts-ci-agent-ci
 
 RUN mkdir -p /workspace && chmod 1777 /workspace
 
