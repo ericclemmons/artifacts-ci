@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Wrapper for local Actions execution through the Agent CI host-executor fork.
+# The official GitHub Actions runner runs directly in this Sandbox.
+
+ca_file=/etc/ssl/certs/ca-certificates.crt
+
+mkdir -p /workspace/.cache/docker-images /workspace/.cache/pnpm-store
+chmod -R a+rwX /workspace/.cache
+chmod 1777 /workspace/.cache
+
+# In host mode, the runner reaches DTU and the Node dist mirror on localhost.
+NODE_DIST_MIRROR_HOST=0.0.0.0 NODE_EXTRA_CA_CERTS="$ca_file" node /usr/local/bin/node-dist-mirror.js >/tmp/node-dist-mirror.log 2>&1 &
+
+set +e
+env \
+  AGENT_CI_EXECUTOR=host \
+  AGENT_CI_HOST_RUNNER_DIR=/home/runner \
+  VP_NODE_DIST_MIRROR=http://127.0.0.1:18080/dist \
+  SSL_CERT_FILE="$ca_file" \
+  SSL_CERT_DIR=/etc/ssl/certs \
+  REQUESTS_CA_BUNDLE="$ca_file" \
+  NODE_EXTRA_CA_CERTS="$ca_file" \
+  CURL_CA_BUNDLE="$ca_file" \
+  CARGO_HTTP_CAINFO="$ca_file" \
+  GIT_SSL_CAINFO="$ca_file" \
+  NIX_SSL_CERT_FILE="$ca_file" \
+  CI=1 \
+  agent-ci run --workflow .github/workflows/ci.yml --json "$@" 2>&1 | node /usr/local/bin/agent-ci-json-reporter.js
+status=$?
+set -e
+
+exit "$status"

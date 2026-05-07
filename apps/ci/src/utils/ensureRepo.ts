@@ -1,4 +1,5 @@
 import { env } from "cloudflare:workers";
+import { requiredBinding } from "./requiredBinding";
 
 const DEFAULT_BRANCH = "main";
 const REPO_REMOTE_PREFIX = "remote:";
@@ -7,10 +8,10 @@ export async function ensureRepo(repoName: string) {
   let repo: ArtifactsRepo;
 
   try {
-    repo = await env.ARTIFACTS.get(repoName);
+    repo = await artifacts().get(repoName);
   } catch (error) {
     try {
-      const created = await env.ARTIFACTS.create(repoName, {
+      const created = await artifacts().create(repoName, {
         setDefaultBranch: DEFAULT_BRANCH,
       });
 
@@ -34,26 +35,34 @@ async function getRepoRemote(repoName: string, remote: unknown) {
     return remote;
   }
 
-  const storedRemote = await env.REPO_REMOTES.get(repoRemoteKey(repoName));
+  const storedRemote = await repoRemotes().get(repoRemoteKey(repoName));
 
   if (storedRemote) {
     return storedRemote;
   }
 
   const probeName = `remote-probe-${crypto.randomUUID()}`;
-  const created = await env.ARTIFACTS.create(probeName, { setDefaultBranch: DEFAULT_BRANCH });
+  const created = await artifacts().create(probeName, { setDefaultBranch: DEFAULT_BRANCH });
 
   try {
     const probeRemote = created.remote.replace(`${probeName}.git`, `${repoName}.git`);
     await putRepoRemote(repoName, probeRemote);
     return probeRemote;
   } finally {
-    await env.ARTIFACTS.delete(probeName);
+    await artifacts().delete(probeName);
   }
 }
 
 async function putRepoRemote(repoName: string, remote: string) {
-  await env.REPO_REMOTES.put(repoRemoteKey(repoName), remote);
+  await repoRemotes().put(repoRemoteKey(repoName), remote);
+}
+
+function artifacts() {
+  return requiredBinding(env.ARTIFACTS, "ARTIFACTS");
+}
+
+function repoRemotes() {
+  return requiredBinding(env.REPO_REMOTES, "REPO_REMOTES");
 }
 
 function repoRemoteKey(repoName: string) {

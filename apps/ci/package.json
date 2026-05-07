@@ -6,9 +6,15 @@
   "scripts": {
     "build": "tsc --noEmit",
     "deploy": "wrangler deploy",
-    "dev": "sh -c 'socket=\"$(pwd)/../proxy/.wrangler/docker-privileged.sock\"; wait-for-socket \"$socket\" && DOCKER_HOST=\"unix://$socket\" wrangler dev --port 8787 --inspector-port 9231'",
+    "dev": "sh -c 'socket=\"$(pwd)/../proxy/.wrangler/docker-privileged.sock\"; wait-for-socket \"$socket\" && DOCKER_HOST=\"unix://$socket\" wrangler dev --config wrangler.local-actions.jsonc --port 8787 --inspector-port 9231'",
+    "dev:act": "sh -c 'socket=\"$(pwd)/../proxy/.wrangler/docker-privileged.sock\"; wait-for-socket \"$socket\" && DOCKER_HOST=\"unix://$socket\" wrangler dev --config wrangler.act.jsonc --port 8787 --inspector-port 9231'",
+    "dev:agent-ci": "sh -c 'socket=\"$(pwd)/../proxy/.wrangler/docker-privileged.sock\"; wait-for-socket \"$socket\" && DOCKER_HOST=\"unix://$socket\" wrangler dev --config wrangler.agent-ci.jsonc --port 8787 --inspector-port 9231'",
+    "dev:local-actions": "sh -c 'socket=\"$(pwd)/../proxy/.wrangler/docker-privileged.sock\"; wait-for-socket \"$socket\" && DOCKER_HOST=\"unix://$socket\" wrangler dev --config wrangler.local-actions.jsonc --port 8787 --inspector-port 9231'",
     "lint": "vp lint",
-    "predev": "copy-certs-to-wrangler"
+    "predev": "copy-certs-to-wrangler",
+    "predev:act": "copy-certs-to-wrangler",
+    "predev:agent-ci": "copy-certs-to-wrangler",
+    "predev:local-actions": "copy-certs-to-wrangler"
   },
   "dependencies": {
     "@cloudflare/sandbox": "catalog:",
@@ -18,8 +24,8 @@
   "devDependencies": {
     "@types/node": "catalog:",
     "copy-certs-to-wrangler": "workspace:*",
-    "typescript": "~6.0.2",
+    "typescript": "catalog:",
     "wait-for-socket": "workspace:*",
-    "wrangler": "^4.86.0"
+    "wrangler": "catalog:"
   }
 }

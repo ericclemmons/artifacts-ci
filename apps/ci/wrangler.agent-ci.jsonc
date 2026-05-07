@@ -40,7 +40,7 @@
   "containers": [
     {
       "class_name": "Sandbox",
-      "image": "./Dockerfile.local-actions",
+      "image": "./Dockerfile.agent-ci",
       "instance_type": "standard-2",
       "max_instances": 1,
     },
@@ -69,7 +69,7 @@
   ],
   "workflows": [
     {
-      "name": "artifacts-ci-deploy-local-actions",
+      "name": "artifacts-ci-deploy-agent-ci",
       "binding": "DEPLOY_WORKFLOW",
       "class_name": "DeployWorkflow",
     },

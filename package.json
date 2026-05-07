@@ -7,9 +7,12 @@
     "build": "vp run -r build",
     "check": "vp fmt && vp run -r lint && vp run -r test && vp run -r build",
     "dev": "pnpm --parallel --filter docker-proxy --filter ci --filter git dev",
+    "dev:act": "pnpm --parallel --filter docker-proxy --filter ci --filter git dev:act",
+    "dev:agent-ci": "pnpm --parallel --filter docker-proxy --filter ci --filter git dev:agent-ci",
+    "dev:local-actions": "pnpm --parallel --filter docker-proxy --filter ci --filter git dev:local-actions",
     "lint": "vp run -r lint",
     "prepare": "vp config",
-    "smoke": "./scripts/smoke-test.sh $1",
+    "smoke": "./scripts/smoke-test.sh",
     "test": "vp run -r test"
   },
   "devDependencies": {

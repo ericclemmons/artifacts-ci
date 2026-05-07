@@ -7,6 +7,7 @@ import { Hono } from "hono";
 import { cleanRepoName } from "./utils/cleanRepoName";
 import { createRepoSetup, createRepoSetupScript } from "./utils/createRepoSetup";
 import { ensureRepo } from "./utils/ensureRepo";
+import { requiredBinding } from "./utils/requiredBinding";
 import { appendRunLog, resetRunLog } from "./utils/runLog";
 
 const app = new Hono<{ Bindings: Env }>();
@@ -90,7 +91,7 @@ app.post("/internal/runs", async (context) => {
   await appendRunLog(runId, `🗒️ commit ${body.commitSha ?? "unknown"}`);
   await appendRunLog(runId, `🌐 ${runUrl}`);
 
-  await context.env.DEPLOY_WORKFLOW.create({
+  await requiredBinding(context.env.DEPLOY_WORKFLOW, "DEPLOY_WORKFLOW").create({
     id: workflowId,
     params: {
       runId,
@@ -106,12 +107,18 @@ app.post("/internal/runs", async (context) => {
 });
 
 app.get("/internal/runs/:id/stream", async (context) => {
-  const runLog = await getAgentByName(context.env.RunLog, context.req.param("id"));
+  const runLog = await getAgentByName(
+    requiredBinding(context.env.RunLog, "RunLog"),
+    context.req.param("id"),
+  );
   return runLog.fetch("https://run-log.local/stream");
 });
 
 app.get("/internal/runs/:id", async (context) => {
-  const runLog = await getAgentByName(context.env.RunLog, context.req.param("id"));
+  const runLog = await getAgentByName(
+    requiredBinding(context.env.RunLog, "RunLog"),
+    context.req.param("id"),
+  );
   const response = await runLog.fetch("https://run-log.local/stream");
 
   return new Response(response.body, {
@@ -133,7 +140,7 @@ function streamRunText(runId: string, env: Env) {
       const write = (chunk: string) => controller.enqueue(encoder.encode(chunk));
 
       try {
-        const runLog = await getAgentByName(env.RunLog, runId);
+        const runLog = await getAgentByName(requiredBinding(env.RunLog, "RunLog"), runId);
         const response = await runLog.fetch("https://run-log.local/stream");
 
         if (!response.ok) {

@@ -1,4 +1,5 @@
 import { env } from "cloudflare:workers";
+import { requiredBinding } from "./requiredBinding";
 
 const RUN_LOG_BASE_URL = "https://run-log.local";
 
@@ -19,6 +20,7 @@ export async function closeRunLog(runId: string) {
 }
 
 export function getRunLog(runId: string) {
-  const id = env.RunLog.idFromName(runId);
-  return env.RunLog.get(id);
+  const runLog = requiredBinding(env.RunLog, "RunLog");
+  const id = runLog.idFromName(runId);
+  return runLog.get(id);
 }

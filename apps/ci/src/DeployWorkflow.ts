@@ -5,6 +5,7 @@ import { WorkflowEntrypoint } from "cloudflare:workers";
 import type { WorkflowEvent, WorkflowStep } from "cloudflare:workers";
 import { deleteArtifactsGitParams, putArtifactsGitParams } from "./Sandbox";
 import { envPlaceholders } from "./utils/proxyCloudflareApiRequest";
+import { requiredBinding } from "./utils/requiredBinding";
 import { appendRunLog, closeRunLog } from "./utils/runLog";
 
 type DeployParams = {
@@ -60,29 +61,30 @@ export class DeployWorkflow extends WorkflowEntrypoint<Env, DeployParams> {
         try {
           await runSandboxCommand(event.payload.runId, sandboxName, "cd /workspace/repo");
 
-          return await runSandboxCommand(
-            event.payload.runId,
-            sandboxName,
-            getRunnerCommand(env.CI_RUNNER),
-            {
-              cwd: "/workspace/repo",
-              env: {
-                CLOUDFLARE_API_BASE_URL: "http://cloudflare-api.sandbox/client/v4",
-                CLOUDFLARE_ACCOUNT_ID: envPlaceholders.CLOUDFLARE_ACCOUNT_ID,
-                CLOUDFLARE_API_TOKEN: envPlaceholders.CLOUDFLARE_API_TOKEN,
-                GITHUB_REPOSITORY: `${queued.namespace}/${queued.repo}`,
-                GITHUB_REPO: `${queued.namespace}/${queued.repo}`,
-                GITHUB_SHA: queued.commitSha ?? "",
-                XDG_CACHE_HOME: "/workspace/.cache",
-                npm_config_store_dir: "/workspace/.cache/pnpm-store",
-              },
+          return await runSandboxCommand(event.payload.runId, sandboxName, "artifacts-ci-runner", {
+            cwd: "/workspace/repo",
+            env: {
+              CLOUDFLARE_API_BASE_URL: "http://cloudflare-api.sandbox/client/v4",
+              CLOUDFLARE_ACCOUNT_ID: envPlaceholders.CLOUDFLARE_ACCOUNT_ID,
+              CLOUDFLARE_API_TOKEN: envPlaceholders.CLOUDFLARE_API_TOKEN,
+              GITHUB_REPOSITORY: `${queued.namespace}/${queued.repo}`,
+              GITHUB_REPO: `${queued.namespace}/${queued.repo}`,
+              GITHUB_SHA: queued.commitSha ?? "",
+              XDG_CACHE_HOME: "/workspace/.cache",
+              npm_config_store_dir: "/workspace/.cache/pnpm-store",
             },
-          );
+          });
         } finally {
           await saveSandboxCache(sandboxName);
         }
       },
     );
+
+    if (!didActionsPass(actions)) {
+      await appendRunLog(event.payload.runId, "failed: GitHub Actions failed");
+      await closeRunLog(event.payload.runId);
+      throw new Error("GitHub Actions failed");
+    }
 
     const deploy = await step.do(
       "Deploy to Cloudflare",
@@ -100,7 +102,7 @@ export class DeployWorkflow extends WorkflowEntrypoint<Env, DeployParams> {
 
     const cleanup = await step.do("destroy sandbox", async () => {
       await appendRunLog(event.payload.runId, "$ cleanup");
-      await getSandbox(env.Sandbox, sandboxName).destroy();
+      await getSandbox(requiredBinding(env.Sandbox, "Sandbox"), sandboxName).destroy();
     });
 
     await closeRunLog(event.payload.runId);
@@ -128,7 +130,7 @@ async function runSandboxCommand(
   await appendRunLog(runId, `$ ${command}`);
 
   try {
-    const sandbox = getSandbox(env.Sandbox, sandboxName);
+    const sandbox = getSandbox(requiredBinding(env.Sandbox, "Sandbox"), sandboxName);
     const stream = await sandbox.execStream(command, options);
     const output: string[] = [];
     let exitCode = 0;
@@ -169,7 +171,8 @@ const CACHE_BACKUP_KEY = "sandbox-cache:v1";
 const CACHE_DIR = "/workspace/.cache";
 
 async function restoreSandboxCache(runId: string, sandboxName: string) {
-  const value = await env.CACHE_BACKUPS.get(CACHE_BACKUP_KEY);
+  const cacheBackups = requiredBinding(env.CACHE_BACKUPS, "CACHE_BACKUPS");
+  const value = await cacheBackups.get(CACHE_BACKUP_KEY);
 
   if (!value) {
     await appendRunLog(runId, "cache: miss");
@@ -179,26 +182,27 @@ async function restoreSandboxCache(runId: string, sandboxName: string) {
   const backup = JSON.parse(value) as DirectoryBackup;
 
   try {
-    await getSandbox(env.Sandbox, sandboxName).restoreBackup(backup);
+    await getSandbox(requiredBinding(env.Sandbox, "Sandbox"), sandboxName).restoreBackup(backup);
     await appendRunLog(runId, `cache: restored ${backup.id}`);
     return backup.id;
   } catch (error) {
     await appendRunLog(runId, `cache: restore failed ${getErrorMessage(error)}`);
-    await env.CACHE_BACKUPS.delete(CACHE_BACKUP_KEY);
+    await cacheBackups.delete(CACHE_BACKUP_KEY);
     return "restore-failed";
   }
 }
 
 async function saveSandboxCache(sandboxName: string) {
   try {
-    const sandbox = getSandbox(env.Sandbox, sandboxName);
+    const cacheBackups = requiredBinding(env.CACHE_BACKUPS, "CACHE_BACKUPS");
+    const sandbox = getSandbox(requiredBinding(env.Sandbox, "Sandbox"), sandboxName);
     await sandbox.exec(`mkdir -p ${CACHE_DIR}`);
     const backup = await sandbox.createBackup({
       dir: CACHE_DIR,
       localBucket: true,
       name: CACHE_BACKUP_KEY,
     });
-    await env.CACHE_BACKUPS.put(CACHE_BACKUP_KEY, JSON.stringify(backup));
+    await cacheBackups.put(CACHE_BACKUP_KEY, JSON.stringify(backup));
   } catch {
     // Cache is best effort while local backup support is experimental.
   }
@@ -219,6 +223,14 @@ function getCheckoutCommand(remote: string, commitSha: string | null) {
   return `rm -rf /workspace/repo && git clone "${remote}" /workspace/repo${checkout}`;
 }
 
-function getRunnerCommand(runner: string | undefined) {
-  return runner === "act" ? "artifacts-ci-act" : "artifacts-ci-agent-ci";
+function didActionsPass(output: string) {
+  const agentCiRunFinish = [...output.matchAll(/^\{"event":"run\.finish".*\}$/gm)].at(-1)?.[0];
+
+  if (agentCiRunFinish) {
+    return agentCiRunFinish.includes('"status":"passed"');
+  }
+
+  return !/\b(Job failed|Job completed with result: Failed|Status:\s+✗|"status":"failed")\b/.test(
+    output,
+  );
 }
