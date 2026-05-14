@@ -1,13 +1,26 @@
-export { DeployWorkflow } from "./DeployWorkflow";
+export { ArtifactsWorkflow } from "./DeployWorkflow";
 export { RunLog } from "./RunLog";
 export { ContainerProxy, Sandbox } from "./Sandbox";
+export { ProjectAgent } from "./slip-plane/ProjectAgent";
+export { SchedulerAgent } from "./slip-plane/SchedulerAgent";
+export { PagesWorkflow } from "./slip-plane/PagesWorkflow";
+export { WorkersBuildsWorkflow } from "./slip-plane/WorkersBuildsWorkflow";
 
 import { getAgentByName } from "agents";
+import { agentsMiddleware } from "hono-agents";
 import { Hono } from "hono";
 import { cleanRepoName } from "./utils/cleanRepoName";
 import { createRepoSetup, createRepoSetupScript } from "./utils/createRepoSetup";
 import { ensureRepo } from "./utils/ensureRepo";
+import {
+  ArtifactsBuildEvent,
+  PagesBuildEvent,
+  validateBuildEvent,
+  WorkersBuildEvent,
+  type QueuedBuildEvent,
+} from "./utils/buildEvent";
 import { appendRunLog, resetRunLog } from "./utils/runLog";
+import { readServerSentEvents, splitLines } from "./utils/serverSentEvents";
 
 const app = new Hono<{ Bindings: Env }>();
 const CI_BASE_URL = "http://ci.localhost:8787";
@@ -21,7 +34,34 @@ type CreateRunRequest = {
   pushedAt?: string;
 };
 
-app.get("/", (context) => context.text("POST /repos { name } to create setup commands.\n"));
+app.use("/agents/*", agentsMiddleware());
+
+app.get("/", (context) => {
+  const { origin } = new URL(context.req.url);
+  return context.text(`Artifacts CI
+
+Create a repository setup script:
+  curl -fsSL "${origin}/repos/demo.sh"
+
+Create setup commands as JSON:
+  curl -sS -X POST "${origin}/repos" \\
+    -H 'content-type: application/json' \\
+    -d '{"name":"demo"}'
+
+Use Agent RPC for the slip-plane demo:
+  agent: ProjectAgent
+  name: demo-account:demo-project
+  method: enqueuePagesBuild({ accountId: "<account>", projectName: "<project>", deploymentId: "<deployment>" })
+
+Set demo scheduler capacity:
+  agent: SchedulerAgent
+  name: free
+  method: setCapacity(1)
+
+Run logs:
+  ${origin}/runs/<run-id>
+`);
+});
 
 app.post("/repos", async (context) => {
   const body = (await context.req.json().catch(() => ({}))) as { name?: string };
@@ -90,7 +130,7 @@ app.post("/internal/runs", async (context) => {
   await appendRunLog(runId, `🗒️ commit ${body.commitSha ?? "unknown"}`);
   await appendRunLog(runId, `🌐 ${runUrl}`);
 
-  await context.env.DEPLOY_WORKFLOW.create({
+  await context.env.DeployWorkflow.create({
     id: workflowId,
     params: {
       runId,
@@ -124,7 +164,26 @@ app.get("/internal/runs/:id", async (context) => {
   });
 });
 
-export default app;
+export default {
+  fetch: app.fetch,
+  async queue(batch, env, ctx) {
+    for (const msg of batch.messages) {
+      try {
+        const event = validateBuildEvent(msg.body);
+        const projectId = event.product === "pages" ? event.projectName : event.projectId;
+
+        const project = await getAgentByName(env.ProjectAgent, `${event.accountId}:${projectId}`);
+        if (PagesBuildEvent.allows(event)) await project.enqueuePagesBuild(event);
+        if (WorkersBuildEvent.allows(event)) await project.enqueueWorkersBuild(event);
+        if (ArtifactsBuildEvent.allows(event)) await project.enqueueArtifactsBuild(event);
+        msg.ack();
+      } catch (error) {
+        console.error("build ingress failed", error);
+        throw error;
+      }
+    }
+  },
+} satisfies ExportedHandler<Env, QueuedBuildEvent>;
 
 function streamRunText(runId: string, env: Env) {
   return new ReadableStream<Uint8Array>({
@@ -156,56 +215,6 @@ function streamRunText(runId: string, env: Env) {
       controller.close();
     },
   });
-}
-
-function splitLines(value: string) {
-  return value.split(/\r?\n/).filter(Boolean);
-}
-
-async function* readServerSentEvents(body: ReadableStream<Uint8Array> | null) {
-  if (!body) {
-    return;
-  }
-
-  const reader = body.getReader();
-  const decoder = new TextDecoder();
-  let buffer = "";
-
-  while (true) {
-    const { done, value } = await reader.read();
-    buffer += decoder.decode(value, { stream: !done });
-    const parts = buffer.split("\n\n");
-    buffer = parts.pop() ?? "";
-
-    for (const part of parts) {
-      yield parseServerSentEvent(part);
-    }
-
-    if (done) {
-      if (buffer) {
-        yield parseServerSentEvent(buffer);
-      }
-
-      break;
-    }
-  }
-}
-
-function parseServerSentEvent(value: string) {
-  const event = { event: "message", data: "" };
-
-  for (const line of value.split("\n")) {
-    if (line.startsWith("event: ")) {
-      event.event = line.slice("event: ".length);
-    }
-
-    if (line.startsWith("data: ")) {
-      event.data += `${line.slice("data: ".length)}\n`;
-    }
-  }
-
-  event.data = event.data.trimEnd();
-  return event;
 }
 
 function getErrorMessage(error: unknown) {

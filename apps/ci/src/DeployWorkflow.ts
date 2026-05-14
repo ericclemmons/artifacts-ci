@@ -17,7 +17,7 @@ type DeployParams = {
   pushedAt: string;
 };
 
-export class DeployWorkflow extends WorkflowEntrypoint<Env, DeployParams> {
+export class ArtifactsWorkflow extends WorkflowEntrypoint<Env, DeployParams> {
   async run(event: WorkflowEvent<DeployParams>, step: WorkflowStep) {
     const queued = await step.do("record queued run", async () => ({
       namespace: event.payload.namespace,
@@ -170,7 +170,7 @@ const CACHE_BACKUP_KEY = "sandbox-cache:v1";
 const CACHE_DIR = "/workspace/.cache";
 
 async function restoreSandboxCache(runId: string, sandboxName: string) {
-  const value = await env.CACHE_BACKUPS.get(CACHE_BACKUP_KEY);
+  const value = await env.CacheBackups.get(CACHE_BACKUP_KEY);
 
   if (!value) {
     await appendRunLog(runId, "cache: miss");
@@ -185,7 +185,7 @@ async function restoreSandboxCache(runId: string, sandboxName: string) {
     return backup.id;
   } catch (error) {
     await appendRunLog(runId, `cache: restore failed ${getErrorMessage(error)}`);
-    await env.CACHE_BACKUPS.delete(CACHE_BACKUP_KEY);
+    await env.CacheBackups.delete(CACHE_BACKUP_KEY);
     return "restore-failed";
   }
 }
@@ -199,7 +199,7 @@ async function saveSandboxCache(sandboxName: string) {
       localBucket: true,
       name: CACHE_BACKUP_KEY,
     });
-    await env.CACHE_BACKUPS.put(CACHE_BACKUP_KEY, JSON.stringify(backup));
+    await env.CacheBackups.put(CACHE_BACKUP_KEY, JSON.stringify(backup));
   } catch {
     // Cache is best effort while local backup support is experimental.
   }

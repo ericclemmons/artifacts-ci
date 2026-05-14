@@ -48,9 +48,18 @@ importers:
       agents:
         specifier: 'catalog:'
         version: 0.11.9(@babel/core@7.29.0)(@babel/runtime@7.29.2)(@cloudflare/workers-types@4.20260426.1)(ai@6.0.170(zod@4.4.0))(react@19.2.5)(rolldown@1.0.0-rc.17)(vite@8.0.10(@types/node@24.12.2)(esbuild@0.27.3)(jiti@2.6.1)(yaml@2.8.3))(zod@4.4.0)
+      arktype:
+        specifier: ^2.1.27
+        version: 2.2.0
       hono:
         specifier: 'catalog:'
         version: 4.12.15
+      hono-agents:
+        specifier: ^0.0.15
+        version: 0.0.15(agents-sdk@0.0.25(@cloudflare/workers-types@4.20260426.1))(hono@4.12.15)
+      immer:
+        specifier: ^11.0.0
+        version: 11.1.8
     devDependencies:
       '@types/node':
         specifier: 'catalog:'
@@ -66,6 +75,10 @@ importers:
         version: 4.89.1(@cloudflare/workers-types@4.20260426.1)
 
   apps/git:
+    dependencies:
+      hono:
+        specifier: 'catalog:'
+        version: 4.12.15
     devDependencies:
       typescript:
         specifier: 'catalog:'
@@ -138,6 +151,12 @@ packages:
   '@ai-sdk/provider@3.0.9':
     resolution: {integrity: sha512-/ngMKqKdL9dSlY/eQ3NFDzzFyw0Hix+cbFFlyuKEKcOgpHdBt/spKUvX/i0wGrDLFPYJeVvv3N0j92LxWRL7yQ==}
     engines: {node: '>=18'}
+
+  '@ark/schema@0.56.0':
+    resolution: {integrity: sha512-ECg3hox/6Z/nLajxXqNhgPtNdHWC9zNsDyskwO28WinoFEnWow4IsERNz9AnXRhTZJnYIlAJ4uGn3nlLk65vZA==}
+
+  '@ark/util@0.56.0':
+    resolution: {integrity: sha512-BghfRC8b9pNs3vBoDJhcta0/c1J1rsoS1+HgVUreMFPdhz/CRAKReAu57YEllNaSy98rWAdY1gE+gFup7OXpgA==}
 
   '@babel/code-frame@7.29.0':
     resolution: {integrity: sha512-9NhCeYjq9+3uxgdtp20LSiJXJvN0FeCtNGpJxuMFZ1Kv3cWUNb6DOhJwUvcVCzKGR66cw4njwM6hrJLqgOwbcw==}
@@ -1322,6 +1341,10 @@ packages:
     resolution: {integrity: sha512-5cvg6CtKwfgdmVqY1WIiXKc3Q1bkRqGLi+2W/6ao+6Y7gu/RCwRuAhGEzh5B4KlszSuTLgZYuqFqo5bImjNKng==}
     engines: {node: '>= 0.6'}
 
+  agents-sdk@0.0.25:
+    resolution: {integrity: sha512-DI/HWoBaKITGj1Zg2KmgkKKn7Wm2f56oiJCOdC4UGsDgV7ieQ4gvf4GIgWv2a0UxzpLneOespZHRP1esb9KfKQ==}
+    deprecated: This package has been renamed to 'agents'
+
   agents@0.11.9:
     resolution: {integrity: sha512-La8kXl/zEr9tu17Xc5BXb5Xz5yfrH+Oh98nnWtj1OxteO1AB0i2R26w77pXCT0ffViLaE3RtgN2dOq8QGDTwsA==}
     hasBin: true
@@ -1376,6 +1399,12 @@ packages:
 
   args-tokenizer@0.3.0:
     resolution: {integrity: sha512-xXAd7G2Mll5W8uo37GETpQ2VrE84M181Z7ugHFGQnJZ50M2mbOv0osSZ9VsSgPfJQ+LVG0prSi0th+ELMsno7Q==}
+
+  arkregex@0.0.5:
+    resolution: {integrity: sha512-ncYjBdLlh5/QnVsAA8De16Tc9EqmYM7y/WU9j+236KcyYNUXogpz3sC4ATIZYzzLxwI+0sEOaQLEmLmRleaEXw==}
+
+  arktype@2.2.0:
+    resolution: {integrity: sha512-t54MZ7ti5BhOEvzEkgKnWvqj+UbDfWig+DHr5I34xatymPusKLS0lQpNJd8M6DzmIto2QGszHfNKoFIT8tMCZQ==}
 
   assertion-error@2.0.1:
     resolution: {integrity: sha512-Izi8RQcffqCeNVgFigKli1ssklIbpHnCYc6AknXGYoB6grJqyeby7jv12JUQgmTAnIDnbck1uxksT4dzN3PWBA==}
@@ -1462,6 +1491,10 @@ packages:
     resolution: {integrity: sha512-tJtZBBHA6vjIAaF6EnIaq6laBBP9aq/Y3ouVJjEfoHbRBcHBAHYcMh/w8LDrk2PvIMMq8gmopa5D4V8RmbrxGw==}
     engines: {node: '>= 0.10'}
 
+  cron-schedule@5.0.4:
+    resolution: {integrity: sha512-nH0a49E/kSVk6BeFgKZy4uUsy6D2A16p120h5bYD9ILBhQu7o2sJFH+WI4R731TSBQ0dB1Ik7inB/dRAB4C8QQ==}
+    engines: {node: '>=18'}
+
   cron-schedule@6.0.0:
     resolution: {integrity: sha512-BoZaseYGXOo5j5HUwTaegIog3JJbuH4BbrY9A1ArLjXpy+RWb3mV28F/9Gv1dDA7E2L8kngWva4NWisnLTyfgQ==}
     engines: {node: '>=20'}
@@ -1543,6 +1576,10 @@ packages:
 
   event-target-polyfill@0.0.4:
     resolution: {integrity: sha512-Gs6RLjzlLRdT8X9ZipJdIZI/Y6/HhRLyq9RdDlCsnpxr/+Nn6bU2EFGuC94GjxqhM+Nmij2Vcq98yoHrU8uNFQ==}
+
+  event-target-shim@6.0.2:
+    resolution: {integrity: sha512-8q3LsZjRezbFZ2PN+uP+Q7pnHUMmAOziU2vA2OwoFaKIXxlxl38IylhSSgUorWu/rf4er67w0ikBqjBFk/pomA==}
+    engines: {node: '>=10.13.0'}
 
   eventsource-parser@3.0.8:
     resolution: {integrity: sha512-70QWGkr4snxr0OXLRWsFLeRBIRPuQOvt4s8QYjmUlmlkyTZkRqS7EDVRZtzU3TiyDbXSzaOeF0XUKy8PchzukQ==}
@@ -1629,6 +1666,12 @@ packages:
     resolution: {integrity: sha512-ej4AhfhfL2Q2zpMmLo7U1Uv9+PyhIZpgQLGT1F9miIGmiCJIoCgSmczFdrc97mWT4kVY72KA+WnnhJ5pghSvSg==}
     engines: {node: '>= 0.4'}
 
+  hono-agents@0.0.15:
+    resolution: {integrity: sha512-zERx/SQ8OyvlnY+43UGI9YDsMH0+i2WnELJneCKJBWs7LDHCZVdIh29t3JvvLl3sfcZ87duCOsKd40R8MlmQ/Q==}
+    peerDependencies:
+      agents-sdk: ^0.0.25
+      hono: ^4.6.17
+
   hono@4.12.15:
     resolution: {integrity: sha512-qM0jDhFEaCBb4TxoW7f53Qrpv9RBiayUHo0S52JudprkhvpjIrGoU1mnnr29Fvd1U335ZFPZQY1wlkqgfGXyLg==}
     engines: {node: '>=16.9.0'}
@@ -1640,6 +1683,9 @@ packages:
   iconv-lite@0.7.2:
     resolution: {integrity: sha512-im9DjEDQ55s9fL4EYzOAv0yMqmMBSZp6G0VvFyTMPKWxiSBHUj9NW/qqLmXUwXrrM7AvqSlTCfvqRb0cM8yYqw==}
     engines: {node: '>=0.10.0'}
+
+  immer@11.1.8:
+    resolution: {integrity: sha512-/tbkHMW7y10Lx6i1crLjD4/OhNkRG+Fo7byZHtah0547nIeXYcpIXaUh0IAQY6gO5459qpGGYapcEOHtFXkIuA==}
 
   inherits@2.0.4:
     resolution: {integrity: sha512-k/vGaX4/Yla3WzyMCvTQOXYeIHvqOKtnqBduzTHpzpQZzAskKMhZ2K+EnBiSM9zGSoIFeMpXKxa4dYeZIQqewQ==}
@@ -1878,10 +1924,18 @@ packages:
     resolution: {integrity: sha512-CiyeOxFT/JZyN5m0z9PfXw4SCBJ6Sygz1Dpl0wqjlhDEGGBP1GnsUVEL0p63hoG1fcj3fHynXi9NYO4nWOL+qQ==}
     engines: {node: '>= 0.8'}
 
+  partyserver@0.0.64:
+    resolution: {integrity: sha512-DuEdsGt2kvss6+P517PRY0PgW/C6v3hQaF2XaVCx0ZmLVSAcsYhDjurHvIFwh5Q1Hp5pJ8vvFAEXvfKEZw8Q8Q==}
+    peerDependencies:
+      '@cloudflare/workers-types': ^4.20240729.0
+
   partyserver@0.5.5:
     resolution: {integrity: sha512-7zub8oV8Od9dY2aXGrgzhX5GLceaWOg7xB5VWXtDcqt2BWVDIOCAgaF0AmBMSu3AXhJHsFdzPnA8SSZdybXMbQ==}
     peerDependencies:
       '@cloudflare/workers-types': ^4.20260424.1
+
+  partysocket@0.0.0-548c226:
+    resolution: {integrity: sha512-sPY8fFu+Y6um9E2K9Hf2s1UFm9JD+sg5bawJZGX/NZG8ZW/ZkQ6XP1uDlfXqdCFg8FwTM4BojKuIZfKHf31n3g==}
 
   partysocket@1.1.18:
     resolution: {integrity: sha512-SyuvH9VavWOSa14v6dYdp3yfSUDII4BQB1+TkGOFBkjfZKjnDBiba4fhdhwBlqGBkqw4ea3gTA1DYhSffX24Wg==}
@@ -2261,6 +2315,12 @@ snapshots:
   '@ai-sdk/provider@3.0.9':
     dependencies:
       json-schema: 0.4.0
+
+  '@ark/schema@0.56.0':
+    dependencies:
+      '@ark/util': 0.56.0
+
+  '@ark/util@0.56.0': {}
 
   '@babel/code-frame@7.29.0':
     dependencies:
@@ -3133,6 +3193,15 @@ snapshots:
       mime-types: 3.0.2
       negotiator: 1.0.0
 
+  agents-sdk@0.0.25(@cloudflare/workers-types@4.20260426.1):
+    dependencies:
+      cron-schedule: 5.0.4
+      nanoid: 5.1.9
+      partyserver: 0.0.64(@cloudflare/workers-types@4.20260426.1)
+      partysocket: 0.0.0-548c226
+    transitivePeerDependencies:
+      - '@cloudflare/workers-types'
+
   agents@0.11.9(@babel/core@7.29.0)(@babel/runtime@7.29.2)(@cloudflare/workers-types@4.20260426.1)(ai@6.0.170(zod@4.4.0))(react@19.2.5)(rolldown@1.0.0-rc.17)(vite@8.0.10(@types/node@24.12.2)(esbuild@0.27.3)(jiti@2.6.1)(yaml@2.8.3))(zod@4.4.0):
     dependencies:
       '@babel/plugin-proposal-decorators': 7.29.0(@babel/core@7.29.0)
@@ -3182,6 +3251,16 @@ snapshots:
   ansi-styles@6.2.3: {}
 
   args-tokenizer@0.3.0: {}
+
+  arkregex@0.0.5:
+    dependencies:
+      '@ark/util': 0.56.0
+
+  arktype@2.2.0:
+    dependencies:
+      '@ark/schema': 0.56.0
+      '@ark/util': 0.56.0
+      arkregex: 0.0.5
 
   assertion-error@2.0.1: {}
 
@@ -3268,6 +3347,8 @@ snapshots:
       object-assign: 4.1.1
       vary: 1.1.2
 
+  cron-schedule@5.0.4: {}
+
   cron-schedule@6.0.0: {}
 
   cross-spawn@7.0.6:
@@ -3348,6 +3429,8 @@ snapshots:
   etag@1.8.1: {}
 
   event-target-polyfill@0.0.4: {}
+
+  event-target-shim@6.0.2: {}
 
   eventsource-parser@3.0.8: {}
 
@@ -3453,6 +3536,11 @@ snapshots:
     dependencies:
       function-bind: 1.1.2
 
+  hono-agents@0.0.15(agents-sdk@0.0.25(@cloudflare/workers-types@4.20260426.1))(hono@4.12.15):
+    dependencies:
+      agents-sdk: 0.0.25(@cloudflare/workers-types@4.20260426.1)
+      hono: 4.12.15
+
   hono@4.12.15: {}
 
   http-errors@2.0.1:
@@ -3466,6 +3554,8 @@ snapshots:
   iconv-lite@0.7.2:
     dependencies:
       safer-buffer: 2.1.2
+
+  immer@11.1.8: {}
 
   inherits@2.0.4: {}
 
@@ -3675,10 +3765,19 @@ snapshots:
 
   parseurl@1.3.3: {}
 
+  partyserver@0.0.64(@cloudflare/workers-types@4.20260426.1):
+    dependencies:
+      '@cloudflare/workers-types': 4.20260426.1
+      nanoid: 5.1.9
+
   partyserver@0.5.5(@cloudflare/workers-types@4.20260426.1):
     dependencies:
       '@cloudflare/workers-types': 4.20260426.1
       nanoid: 5.1.9
+
+  partysocket@0.0.0-548c226:
+    dependencies:
+      event-target-shim: 6.0.2
 
   partysocket@1.1.18(react@19.2.5):
     dependencies:

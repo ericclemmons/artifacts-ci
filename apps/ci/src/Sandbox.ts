@@ -24,13 +24,13 @@ export async function putArtifactsGitParams(
   repo: string,
   params: ArtifactsGitParams,
 ) {
-  await env.REPO_TOKENS.put(checkoutKey(namespace, repo), JSON.stringify(params), {
+  await env.RepoTokens.put(checkoutKey(namespace, repo), JSON.stringify(params), {
     expirationTtl: 60,
   });
 }
 
 export async function deleteArtifactsGitParams(namespace: string, repo: string) {
-  await env.REPO_TOKENS.delete(checkoutKey(namespace, repo));
+  await env.RepoTokens.delete(checkoutKey(namespace, repo));
 }
 
 async function proxyArtifactsRequest(request: Request, env: Env) {
@@ -41,7 +41,7 @@ async function proxyArtifactsRequest(request: Request, env: Env) {
     return new Response("Unsupported Artifacts checkout path.\n", { status: 404 });
   }
 
-  const params = await getArtifactsGitParams(env.REPO_TOKENS, route.namespace, route.repo);
+  const params = await getArtifactsGitParams(env.RepoTokens, route.namespace, route.repo);
   const upstreamUrl = new URL(params.remote + route.suffix);
   upstreamUrl.search = sourceUrl.search;
 

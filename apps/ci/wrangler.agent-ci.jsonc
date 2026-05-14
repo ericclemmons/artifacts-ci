@@ -12,28 +12,28 @@
   },
   "artifacts": [
     {
-      "binding": "ARTIFACTS",
+      "binding": "Artifacts",
       "namespace": "production",
       "remote": true,
     },
   ],
   "kv_namespaces": [
     {
-      "binding": "REPO_TOKENS",
+      "binding": "RepoTokens",
       "id": "artifacts_ci_repo_tokens",
     },
     {
-      "binding": "REPO_REMOTES",
+      "binding": "RepoRemotes",
       "id": "artifacts_ci_repo_remotes",
     },
     {
-      "binding": "CACHE_BACKUPS",
+      "binding": "CacheBackups",
       "id": "artifacts_ci_cache_backups",
     },
   ],
   "r2_buckets": [
     {
-      "binding": "BACKUP_BUCKET",
+      "binding": "BackupBucket",
       "bucket_name": "artifacts-ci-cache-backups",
     },
   ],
@@ -55,6 +55,14 @@
         "class_name": "RunLog",
         "name": "RunLog",
       },
+      {
+        "class_name": "ProjectAgent",
+        "name": "ProjectAgent",
+      },
+      {
+        "class_name": "SchedulerAgent",
+        "name": "SchedulerAgent",
+      },
     ],
   },
   "migrations": [
@@ -66,12 +74,45 @@
       "new_sqlite_classes": ["RunLog"],
       "tag": "v2",
     },
+    {
+      "new_sqlite_classes": ["ProjectAgent", "SchedulerAgent"],
+      "tag": "v3",
+    },
   ],
+  "queues": {
+    "producers": [
+      {
+        "queue": "artifacts-ci-build-ingress-agent-ci",
+        "binding": "BuildIngressQueue",
+      },
+    ],
+    "consumers": [
+      {
+        "queue": "artifacts-ci-build-ingress-agent-ci",
+        "max_batch_size": 1,
+        "max_batch_timeout": 1,
+        "max_retries": 10,
+        "retry_delay": 10,
+        "dead_letter_queue": "artifacts-ci-build-ingress-agent-ci-dlq",
+        "max_concurrency": 1,
+      },
+    ],
+  },
   "workflows": [
     {
       "name": "artifacts-ci-deploy-agent-ci",
-      "binding": "DEPLOY_WORKFLOW",
-      "class_name": "DeployWorkflow",
+      "binding": "DeployWorkflow",
+      "class_name": "ArtifactsWorkflow",
+    },
+    {
+      "name": "artifacts-ci-pages-slip-plane-agent-ci",
+      "binding": "PagesWorkflow",
+      "class_name": "PagesWorkflow",
+    },
+    {
+      "name": "artifacts-ci-workers-builds-slip-plane-agent-ci",
+      "binding": "WorkersBuildsWorkflow",
+      "class_name": "WorkersBuildsWorkflow",
     },
   ],
 }
