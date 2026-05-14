@@ -3,13 +3,9 @@ export const envPlaceholders = {
   CLOUDFLARE_API_TOKEN: "$$CLOUDFLARE_API_TOKEN$$",
 };
 
-import { requiredBinding } from "./requiredBinding";
-
 export function proxyCloudflareApiRequest(request: Request, env: Env) {
-  const accountId = cleanSecret(
-    requiredBinding(env.CLOUDFLARE_ACCOUNT_ID, "CLOUDFLARE_ACCOUNT_ID"),
-  );
-  const apiToken = cleanSecret(requiredBinding(env.CLOUDFLARE_API_TOKEN, "CLOUDFLARE_API_TOKEN"));
+  const accountId = cleanSecret(env.CLOUDFLARE_ACCOUNT_ID);
+  const apiToken = cleanSecret(env.CLOUDFLARE_API_TOKEN);
 
   if (!accountId || !apiToken) {
     throw new Error("Missing Cloudflare deploy credentials");

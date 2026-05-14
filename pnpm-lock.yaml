@@ -61,9 +61,6 @@ importers:
       typescript:
         specifier: 'catalog:'
         version: 6.0.3
-      wait-for-socket:
-        specifier: workspace:*
-        version: link:../../packages/wait-for-socket
       wrangler:
         specifier: 'catalog:'
         version: 4.89.1(@cloudflare/workers-types@4.20260426.1)

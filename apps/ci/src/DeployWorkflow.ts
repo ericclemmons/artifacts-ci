@@ -5,7 +5,6 @@ import { WorkflowEntrypoint } from "cloudflare:workers";
 import type { WorkflowEvent, WorkflowStep } from "cloudflare:workers";
 import { deleteArtifactsGitParams, putArtifactsGitParams } from "./Sandbox";
 import { envPlaceholders } from "./utils/proxyCloudflareApiRequest";
-import { requiredBinding } from "./utils/requiredBinding";
 import { appendRunLog, closeRunLog } from "./utils/runLog";
 
 type DeployParams = {
@@ -102,7 +101,7 @@ export class DeployWorkflow extends WorkflowEntrypoint<Env, DeployParams> {
 
     const cleanup = await step.do("destroy sandbox", async () => {
       await appendRunLog(event.payload.runId, "$ cleanup");
-      await getSandbox(requiredBinding(env.Sandbox, "Sandbox"), sandboxName).destroy();
+      await getSandbox(env.Sandbox, sandboxName).destroy();
     });
 
     await closeRunLog(event.payload.runId);
@@ -130,7 +129,7 @@ async function runSandboxCommand(
   await appendRunLog(runId, `$ ${command}`);
 
   try {
-    const sandbox = getSandbox(requiredBinding(env.Sandbox, "Sandbox"), sandboxName);
+    const sandbox = getSandbox(env.Sandbox, sandboxName);
     const stream = await sandbox.execStream(command, options);
     const output: string[] = [];
     let exitCode = 0;
@@ -171,8 +170,7 @@ const CACHE_BACKUP_KEY = "sandbox-cache:v1";
 const CACHE_DIR = "/workspace/.cache";
 
 async function restoreSandboxCache(runId: string, sandboxName: string) {
-  const cacheBackups = requiredBinding(env.CACHE_BACKUPS, "CACHE_BACKUPS");
-  const value = await cacheBackups.get(CACHE_BACKUP_KEY);
+  const value = await env.CACHE_BACKUPS.get(CACHE_BACKUP_KEY);
 
   if (!value) {
     await appendRunLog(runId, "cache: miss");
@@ -182,27 +180,26 @@ async function restoreSandboxCache(runId: string, sandboxName: string) {
   const backup = JSON.parse(value) as DirectoryBackup;
 
   try {
-    await getSandbox(requiredBinding(env.Sandbox, "Sandbox"), sandboxName).restoreBackup(backup);
+    await getSandbox(env.Sandbox, sandboxName).restoreBackup(backup);
     await appendRunLog(runId, `cache: restored ${backup.id}`);
     return backup.id;
   } catch (error) {
     await appendRunLog(runId, `cache: restore failed ${getErrorMessage(error)}`);
-    await cacheBackups.delete(CACHE_BACKUP_KEY);
+    await env.CACHE_BACKUPS.delete(CACHE_BACKUP_KEY);
     return "restore-failed";
   }
 }
 
 async function saveSandboxCache(sandboxName: string) {
   try {
-    const cacheBackups = requiredBinding(env.CACHE_BACKUPS, "CACHE_BACKUPS");
-    const sandbox = getSandbox(requiredBinding(env.Sandbox, "Sandbox"), sandboxName);
+    const sandbox = getSandbox(env.Sandbox, sandboxName);
     await sandbox.exec(`mkdir -p ${CACHE_DIR}`);
     const backup = await sandbox.createBackup({
       dir: CACHE_DIR,
       localBucket: true,
       name: CACHE_BACKUP_KEY,
     });
-    await cacheBackups.put(CACHE_BACKUP_KEY, JSON.stringify(backup));
+    await env.CACHE_BACKUPS.put(CACHE_BACKUP_KEY, JSON.stringify(backup));
   } catch {
     // Cache is best effort while local backup support is experimental.
   }

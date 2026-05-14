@@ -1,7 +1,6 @@
 import { ContainerProxy, Sandbox as BaseSandbox } from "@cloudflare/sandbox";
 import { env } from "cloudflare:workers";
 import { proxyCloudflareApiRequest } from "./utils/proxyCloudflareApiRequest";
-import { requiredBinding } from "./utils/requiredBinding";
 
 export { ContainerProxy };
 
@@ -25,17 +24,13 @@ export async function putArtifactsGitParams(
   repo: string,
   params: ArtifactsGitParams,
 ) {
-  await requiredBinding(env.REPO_TOKENS, "REPO_TOKENS").put(
-    checkoutKey(namespace, repo),
-    JSON.stringify(params),
-    {
-      expirationTtl: 60,
-    },
-  );
+  await env.REPO_TOKENS.put(checkoutKey(namespace, repo), JSON.stringify(params), {
+    expirationTtl: 60,
+  });
 }
 
 export async function deleteArtifactsGitParams(namespace: string, repo: string) {
-  await requiredBinding(env.REPO_TOKENS, "REPO_TOKENS").delete(checkoutKey(namespace, repo));
+  await env.REPO_TOKENS.delete(checkoutKey(namespace, repo));
 }
 
 async function proxyArtifactsRequest(request: Request, env: Env) {
@@ -46,11 +41,7 @@ async function proxyArtifactsRequest(request: Request, env: Env) {
     return new Response("Unsupported Artifacts checkout path.\n", { status: 404 });
   }
 
-  const params = await getArtifactsGitParams(
-    requiredBinding(env.REPO_TOKENS, "REPO_TOKENS"),
-    route.namespace,
-    route.repo,
-  );
+  const params = await getArtifactsGitParams(env.REPO_TOKENS, route.namespace, route.repo);
   const upstreamUrl = new URL(params.remote + route.suffix);
   upstreamUrl.search = sourceUrl.search;
 
