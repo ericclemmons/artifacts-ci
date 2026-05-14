@@ -11,8 +11,12 @@
 - [ ] Move deployment into the pushed repository workflow.
   - [ ] Remove the post-CI `wrangler deploy` step from `DeployWorkflow`.
   - [ ] Put deploy behavior in `examples/vite-plus/.github/workflows/ci.yml`.
-- [ ] Support Agent CI as an alternative runner to `act`.
-  - [ ] Reference: https://agent-ci.dev/
+- [ ] Add Cloudflare Workflows as a native CI/CD pipeline runner.
+  - [ ] Reference: https://wiki.cfdata.org/spaces/PS/blog/2026/04/29/1396657234/A+CI+CD+pipeline+is+just+a+Workflow
+  - [ ] Add `examples/vite-plus/.cloudflare/workflows/ci.ts`.
+  - [ ] Generate the first workflow from `examples/vite-plus/.github/workflows/ci.yml`.
+  - [ ] Run equivalent setup, install, check, test, and build steps without `act` or Agent CI.
+  - [ ] Decide how pushed repos opt into Cloudflare Workflow CI over GitHub Actions YAML.
 - [ ] Evaluate the native GitHub Actions runner as a replacement for `act`.
   - [ ] Reference: https://github.com/actions/runner
   - [ ] Determine whether the runner can execute pushed repo workflows inside Sandbox without registering with GitHub.
@@ -68,6 +72,10 @@
   - [x] Restores `/workspace/.cache` before checkout.
   - [x] Saves cache state after CI attempts.
   - [x] Uses local R2 binding support during development.
+- [x] Added runner-specific local dev scripts.
+  - [x] `dev:act` runs the GitHub Actions-compatible `act` path.
+  - [x] `dev:agent-ci` runs Agent CI as an alternative runner.
+  - [x] `dev:local-actions` runs the local actions configuration.
 - [x] Added the Vite+ smoke fixture.
   - [x] Smoke pushes `examples/vite-plus` into Artifacts.
   - [x] The expected current endpoint is an intentional fixture `vp check` failure after setup, install, and runner execution succeed.
