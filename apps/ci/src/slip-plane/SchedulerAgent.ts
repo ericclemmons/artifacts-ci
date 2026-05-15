@@ -5,11 +5,11 @@ import type { BuildRef, ProjectAgent } from "./ProjectAgent";
 type SchedulerState = {
   capacity: number;
   pending: BuildRef[];
-  dispatched: BuildRef[];
+  active: BuildRef[];
 };
 
 export class SchedulerAgent extends Agent<Env, SchedulerState> {
-  initialState: SchedulerState = { capacity: 0, pending: [], dispatched: [] };
+  initialState: SchedulerState = { capacity: 1, pending: [], active: [] };
 
   async onStart() {
     await this.scheduleEvery(30, "refreshCapacity");
@@ -17,7 +17,52 @@ export class SchedulerAgent extends Agent<Env, SchedulerState> {
 
   async refreshCapacity() {
     // Demo placeholder. This will poll available pre-warmed capacity later.
-    this.setState({ ...this.state, capacity: 1 });
+    // this.setState({ ...this.state, capacity: 1 });
+    await this.reconcileActiveWorkflows();
+    await this.dispatch();
+  }
+
+  async reconcileActiveWorkflows() {
+    const completed: string[] = [];
+
+    for (const build of this.state.active) {
+      const project = await getAgentByName<Env, ProjectAgent>(
+        this.env.ProjectAgent,
+        `${build.accountId}:${build.projectId}`,
+      );
+      const status = await project.getLiveWorkflowStatus(build.workflowId);
+      console.log("SchedulerAgent active workflow status", {
+        workflowId: build.workflowId,
+        workflowName: build.workflowName,
+        status: status.status,
+        live: status.live,
+      });
+
+      if (!status.live) completed.push(build.workflowId);
+    }
+
+    if (completed.length === 0) return;
+
+    this.setState(
+      produce(this.state, (draft) => {
+        draft.active = draft.active.filter((build) => !completed.includes(build.workflowId));
+        draft.capacity += completed.length;
+      }),
+    );
+  }
+
+  @callable()
+  async completeWorkflow(workflowId: string) {
+    const wasActive = this.state.active.some((build) => build.workflowId === workflowId);
+
+    if (!wasActive) return;
+
+    this.setState(
+      produce(this.state, (draft) => {
+        draft.active = draft.active.filter((build) => build.workflowId !== workflowId);
+        draft.capacity += 1;
+      }),
+    );
     await this.dispatch();
   }
 
@@ -50,7 +95,7 @@ export class SchedulerAgent extends Agent<Env, SchedulerState> {
         produce(this.state, (draft) => {
           draft.capacity -= 1;
           draft.pending = pending;
-          draft.dispatched.push(build);
+          draft.active.push(build);
         }),
       );
 

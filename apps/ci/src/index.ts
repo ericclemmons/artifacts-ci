@@ -51,7 +51,7 @@ Create setup commands as JSON:
 Use Agent RPC for the slip-plane demo:
   agent: ProjectAgent
   name: demo-account:demo-project
-  method: enqueuePagesBuild({ accountId: "<account>", projectName: "<project>", deploymentId: "<deployment>" })
+  method: enqueuePagesBuild({ accountId: "<account>", projectName: "<project>", branch: "main" })
 
 Set demo scheduler capacity:
   agent: SchedulerAgent

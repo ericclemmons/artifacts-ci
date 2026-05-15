@@ -1,28 +1,22 @@
 import { type } from "arktype";
-import type { ArtifactsBuild, PagesBuild, WorkersBuild } from "../slip-plane/ProjectAgent";
 
-export type QueuedBuildEvent =
-  | ({ product: "pages" } & PagesBuild)
-  | ({ product: "workers-builds" } & WorkersBuild)
-  | ({ product: "artifacts" } & ArtifactsBuild);
-
-export const PagesBuildEvent = type({
-  product: "'pages'",
+export const PagesBuild = type({
   accountId: "string",
   projectName: "string",
-  deploymentId: "string",
+  "branch?": "string",
+  "commitHash?": "string",
+  "commitMessage?": "string",
 });
 
-export const WorkersBuildEvent = type({
-  product: "'workers-builds'",
+export const WorkersBuild = type({
   accountId: "string",
   projectId: "string",
-  triggerId: "string",
-  buildId: "string",
+  "triggerId?": "string",
+  "branch?": "string",
+  "commitHash?": "string",
 });
 
-export const ArtifactsBuildEvent = type({
-  product: "'artifacts'",
+export const ArtifactsBuild = type({
   accountId: "string",
   projectId: "string",
   namespace: "string",
@@ -32,7 +26,24 @@ export const ArtifactsBuildEvent = type({
   commitSha: "string|null",
 });
 
+export const PagesBuildEvent = type({
+  product: "'pages'",
+}).and(PagesBuild);
+
+export const WorkersBuildEvent = type({
+  product: "'workers-builds'",
+}).and(WorkersBuild);
+
+export const ArtifactsBuildEvent = type({
+  product: "'artifacts'",
+}).and(ArtifactsBuild);
+
 export const BuildEvent = type.or(PagesBuildEvent, WorkersBuildEvent, ArtifactsBuildEvent);
+
+export type PagesBuild = typeof PagesBuild.infer;
+export type WorkersBuild = typeof WorkersBuild.infer;
+export type ArtifactsBuild = typeof ArtifactsBuild.infer;
+export type QueuedBuildEvent = typeof BuildEvent.infer;
 
 export function validateBuildEvent(value: unknown): QueuedBuildEvent {
   return BuildEvent.assert(value) as QueuedBuildEvent;
