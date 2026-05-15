@@ -1,4 +1,10 @@
-export { ArtifactsWorkflow } from "./DeployWorkflow";
+export { DynamicWorkflowBinding } from "@cloudflare/dynamic-workflows";
+export {
+  SandboxWorkflow,
+  SandboxWorkflow as ArtifactsWorkflow,
+  RepositoryWorkflow,
+  WorkflowCommandRunner,
+} from "./SandboxWorkflow";
 export { RunLog } from "./RunLog";
 export { ContainerProxy, Sandbox } from "./Sandbox";
 export { ProjectAgent } from "./slip-plane/ProjectAgent";
@@ -64,7 +70,9 @@ Run logs:
 });
 
 app.post("/repos", async (context) => {
-  const body = (await context.req.json().catch(() => ({}))) as { name?: string };
+  const body = (await context.req.json().catch(() => ({}))) as {
+    name?: string;
+  };
   const name = cleanRepoName(body.name ?? context.req.query("name") ?? "demo");
   const repo = await ensureRepo(name);
 

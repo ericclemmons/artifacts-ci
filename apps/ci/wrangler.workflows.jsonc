@@ -4,6 +4,9 @@
   "main": "src/index.ts",
   "compatibility_date": "2026-04-28",
   "compatibility_flags": ["nodejs_compat"],
+  "vars": {
+    "ARTIFACTS_CI_RUNNER": "workflows",
+  },
   "observability": {
     "enabled": true,
   },
@@ -35,14 +38,29 @@
     {
       "binding": "BACKUP_BUCKET",
       "bucket_name": "artifacts-ci-cache-backups",
+      "remote": false,
+    },
+  ],
+  "worker_loaders": [
+    {
+      "binding": "WorkflowLoader",
     },
   ],
   "containers": [
     {
       "class_name": "Sandbox",
-      "image": "./Dockerfile.local-actions",
+      "image": "./Dockerfile.workflows",
       "instance_type": "standard-2",
       "max_instances": 1,
+      "ssh": {
+        "enabled": true,
+      },
+      "authorized_keys": [
+        {
+          "name": "eclemmons-cloudflare",
+          "public_key": "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFZcUApUjWSoUCTWCDva9a3kttEwoMIABL89XUM4oSA5 eclemmons@cloudflare.com",
+        },
+      ],
     },
   ],
   "durable_objects": {
@@ -82,35 +100,40 @@
   "queues": {
     "producers": [
       {
-        "queue": "artifacts-ci-build-ingress",
+        "queue": "artifacts-ci-build-ingress-workflows",
         "binding": "BuildIngressQueue",
       },
     ],
     "consumers": [
       {
-        "queue": "artifacts-ci-build-ingress",
+        "queue": "artifacts-ci-build-ingress-workflows",
         "max_batch_size": 1,
         "max_batch_timeout": 1,
         "max_retries": 10,
         "retry_delay": 10,
-        "dead_letter_queue": "artifacts-ci-build-ingress-dlq",
+        "dead_letter_queue": "artifacts-ci-build-ingress-workflows-dlq",
         "max_concurrency": 1,
       },
     ],
   },
   "workflows": [
     {
-      "name": "artifacts-ci-deploy-local-actions",
+      "name": "artifacts-ci-deploy-workflows",
       "binding": "DeployWorkflow",
       "class_name": "SandboxWorkflow",
     },
     {
-      "name": "artifacts-ci-pages-slip-plane",
+      "name": "artifacts-ci-repository-workflows",
+      "binding": "RepositoryWorkflow",
+      "class_name": "RepositoryWorkflow",
+    },
+    {
+      "name": "artifacts-ci-pages-slip-plane-workflows",
       "binding": "PagesWorkflow",
       "class_name": "PagesWorkflow",
     },
     {
-      "name": "artifacts-ci-workers-builds-slip-plane",
+      "name": "artifacts-ci-workers-builds-slip-plane-workflows",
       "binding": "WorkersBuildsWorkflow",
       "class_name": "WorkersBuildsWorkflow",
     },

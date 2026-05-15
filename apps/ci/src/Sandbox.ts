@@ -17,6 +17,8 @@ Sandbox.outboundByHost = {
   "api.cloudflare.com": (request: Request) => proxyCloudflareApiRequest(request, env),
   "artifacts.sandbox": (request: Request) => proxyArtifactsRequest(request, env),
   "cloudflare-api.sandbox": (request: Request) => proxyCloudflareApiRequest(request, env),
+  "metadata.sandbox": (_request: Request, _env: Env, ctx: { containerId: string }) =>
+    new Response(ctx.containerId),
 };
 
 export async function putArtifactsGitParams(

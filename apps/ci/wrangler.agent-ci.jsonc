@@ -33,7 +33,7 @@
   ],
   "r2_buckets": [
     {
-      "binding": "BackupBucket",
+      "binding": "BACKUP_BUCKET",
       "bucket_name": "artifacts-ci-cache-backups",
     },
   ],
@@ -102,7 +102,7 @@
     {
       "name": "artifacts-ci-deploy-agent-ci",
       "binding": "DeployWorkflow",
-      "class_name": "ArtifactsWorkflow",
+      "class_name": "SandboxWorkflow",
     },
     {
       "name": "artifacts-ci-pages-slip-plane-agent-ci",

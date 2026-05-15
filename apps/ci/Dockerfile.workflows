@@ -1,0 +1,27 @@
+# syntax=docker/dockerfile:1.7
+# GitHub-compatible runner image with Cloudflare Sandbox layered on top.
+FROM ghcr.io/actions/actions-runner:latest
+
+USER root
+
+COPY --from=docker.io/cloudflare/sandbox:0.9.2 /container-server/sandbox /sandbox
+
+# Optional local-only CA hook for environments that intercept TLS.
+RUN --mount=type=bind,source=.,target=/build-context \
+  if [ -f /build-context/.wrangler/docker-extra-ca.crt ]; then \
+    cp /build-context/.wrangler/docker-extra-ca.crt /usr/local/share/ca-certificates/docker-extra.crt && \
+    update-ca-certificates; \
+  fi
+
+ENV HOME="/home/runner"
+ENV PATH="/home/runner/externals/node24/bin:${PATH}"
+
+RUN apt-get update && \
+  apt-get install -y --no-install-recommends build-essential libatomic1 python3 squashfs-tools && \
+  rm -rf /var/lib/apt/lists/*
+
+RUN mkdir -p /home/runner/.cache /home/runner/.local/share/pnpm /workspace && chmod -R a+rwX /home/runner/.cache /home/runner/.local && chmod 1777 /workspace
+
+EXPOSE 3000
+
+ENTRYPOINT ["/sandbox"]
