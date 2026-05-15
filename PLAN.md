@@ -9,14 +9,9 @@
   - [ ] Reference: https://developers.cloudflare.com/sandbox/guides/browser-terminals/
 - [ ] Convert the CI app to TanStack Start.
 - [ ] Move deployment into the pushed repository workflow.
-  - [ ] Remove the post-CI `wrangler deploy` step from `DeployWorkflow`.
+  - [ ] Remove the post-CI `wrangler deploy` step from `SandboxWorkflow`.
   - [ ] Put deploy behavior in `examples/vite-plus/.github/workflows/ci.yml`.
-- [ ] Add Cloudflare Workflows as a native CI/CD pipeline runner.
-  - [ ] Reference: https://wiki.cfdata.org/spaces/PS/blog/2026/04/29/1396657234/A+CI+CD+pipeline+is+just+a+Workflow
-  - [ ] Add `examples/vite-plus/.cloudflare/workflows/ci.ts`.
-  - [ ] Generate the first workflow from `examples/vite-plus/.github/workflows/ci.yml`.
-  - [ ] Run equivalent setup, install, check, test, and build steps without `act` or Agent CI.
-  - [ ] Decide how pushed repos opt into Cloudflare Workflow CI over GitHub Actions YAML.
+- [ ] Decide how pushed repos opt into Cloudflare Workflow CI over GitHub Actions YAML.
 - [ ] Evaluate the native GitHub Actions runner as a replacement for `act`.
   - [ ] Reference: https://github.com/actions/runner
   - [ ] Determine whether the runner can execute pushed repo workflows inside Sandbox without registering with GitHub.
@@ -69,16 +64,24 @@
   - [x] `/runs/:id` streams logs for browser viewing.
   - [x] `/runs/:id/stream` exposes raw SSE replay.
 - [x] Added Sandbox cache backup and restore.
-  - [x] Restores `/workspace/.cache` before checkout.
+  - [x] Restores `/workspace/.cache`, `/home/runner/.cache`, and `/home/runner/.local/share/pnpm` before checkout.
   - [x] Saves cache state after CI attempts.
   - [x] Uses local R2 binding support during development.
 - [x] Added runner-specific local dev scripts.
   - [x] `dev:act` runs the GitHub Actions-compatible `act` path.
   - [x] `dev:agent-ci` runs Agent CI as an alternative runner.
   - [x] `dev:local-actions` runs the local actions configuration.
+  - [x] `dev:workflows` runs repository-native Cloudflare Workflows.
 - [x] Added the Vite+ smoke fixture.
   - [x] Smoke pushes `examples/vite-plus` into Artifacts.
-  - [x] The expected current endpoint is an intentional fixture `vp check` failure after setup, install, and runner execution succeed.
+  - [x] The fixture covers setup, install, check, test, build, and Worker deploy.
+- [x] Added Cloudflare Workflows as a native CI/CD pipeline runner.
+  - [x] Reference: https://wiki.cfdata.org/spaces/PS/blog/2026/04/29/1396657234/A+CI+CD+pipeline+is+just+a+Workflow
+  - [x] Added `examples/vite-plus/.cloudflare/workflows/ci.js`.
+  - [x] Ported the Vite+ smoke flow from GitHub Actions YAML into a repository Cloudflare Workflow.
+  - [x] Runs equivalent setup, install, check, test, build, and deploy steps without `act` or Agent CI.
+  - [x] Loads repository workflow code with `@cloudflare/dynamic-workflows` and Worker Loader.
+  - [x] Exposes Sandbox command execution to repository workflows through `SANDBOX`, `CONTAINER`, and `COMMAND_RUNNER` bindings.
 
 ## Deferred
 

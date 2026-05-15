@@ -19,8 +19,8 @@
 ## Workspace Shape
 
 - `apps/ci` is the Hono Worker at `https://ci.localhost`; it creates/reuses Cloudflare Artifacts repos and emits Git setup commands from `/repos/<name>.sh`.
-- `apps/git` is the Git smart-HTTP Worker at `https://git.localhost`; it proxies pushes to Artifacts and starts `DeployWorkflow`.
-- `apps/ci/src/DeployWorkflow.ts` runs the pushed repo in Cloudflare Sandbox: clone, then `npx --yes @redwoodjs/agent-ci run --workflow .github/workflows/ci.yml`.
+- `apps/git` is the Git smart-HTTP Worker at `https://git.localhost`; it proxies pushes to Artifacts and starts `SandboxWorkflow` through the `DeployWorkflow` binding.
+- `apps/ci/src/SandboxWorkflow.ts` runs the pushed repo in Cloudflare Sandbox: clone, then a selected runner such as local actions, Agent CI, or repository Cloudflare Workflows.
 - `packages/utils` is still mostly starter scaffolding; do not infer product architecture from its README metadata.
 - `examples/vite-plus` is a simple Vite+ smoke fixture, not the main app and not part of `pnpm-workspace.yaml`.
 

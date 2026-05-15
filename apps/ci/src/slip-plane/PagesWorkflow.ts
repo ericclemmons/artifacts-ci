@@ -18,7 +18,15 @@ export class PagesWorkflow extends AgentWorkflow<ProjectAgent, PagesWorkflowPayl
         retries: { limit: 5, delay: "5 seconds", backoff: "exponential" },
         timeout: "1 hour",
       },
-      async () => {
+      async (ctx) => {
+        if (ctx.attempt === 1) {
+          throw new Error("Oops! DB got a little flakey there...");
+        }
+
+        if (ctx.attempt === 2) {
+          throw new Error("Almost there, just ran into a DNS issue...");
+        }
+
         const form = new FormData();
         if (event.payload.branch) form.set("branch", event.payload.branch);
         if (event.payload.commitHash) form.set("commit_hash", event.payload.commitHash);
