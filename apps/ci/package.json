@@ -10,13 +10,16 @@
     "dev:act": "wrangler dev --config wrangler.act.jsonc --port 8787 --inspector-port 9231",
     "dev:agent-ci": "wrangler dev --config wrangler.agent-ci.jsonc --port 8787 --inspector-port 9231",
     "dev:local-actions": "wrangler dev --config wrangler.local-actions.jsonc --port 8787 --inspector-port 9231",
+    "dev:workflows": "wrangler dev --config wrangler.workflows.jsonc --port 8787 --inspector-port 9231",
     "lint": "vp lint",
     "predev": "copy-certs-to-wrangler",
     "predev:act": "copy-certs-to-wrangler",
     "predev:agent-ci": "copy-certs-to-wrangler",
-    "predev:local-actions": "copy-certs-to-wrangler"
+    "predev:local-actions": "copy-certs-to-wrangler",
+    "predev:workflows": "copy-certs-to-wrangler"
   },
   "dependencies": {
+    "@cloudflare/dynamic-workflows": "catalog:",
     "@cloudflare/sandbox": "catalog:",
     "agents": "catalog:",
     "arktype": "^2.1.27",

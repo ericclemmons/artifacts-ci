@@ -10,12 +10,14 @@
     "dev:act": "wrangler dev --port 8788 --inspector-port 9232",
     "dev:agent-ci": "wrangler dev --port 8788 --inspector-port 9232",
     "dev:local-actions": "wrangler dev --port 8788 --inspector-port 9232",
+    "dev:workflows": "wrangler dev --port 8788 --inspector-port 9232",
     "lint": "vp lint"
   },
   "dependencies": {
     "hono": "catalog:"
   },
   "devDependencies": {
+    "@types/node": "catalog:",
     "typescript": "catalog:",
     "wrangler": "catalog:"
   }

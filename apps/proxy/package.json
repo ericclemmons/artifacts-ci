@@ -7,6 +7,7 @@
     "dev": "node server.ts",
     "dev:act": "node server.ts",
     "dev:agent-ci": "node server.ts",
-    "dev:local-actions": "node server.ts"
+    "dev:local-actions": "node server.ts",
+    "dev:workflows": "node server.ts"
   }
 }

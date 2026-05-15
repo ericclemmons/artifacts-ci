@@ -10,6 +10,7 @@
     "dev:act": "pnpm --parallel --filter docker-proxy --filter ci --filter git dev:act",
     "dev:agent-ci": "pnpm --parallel --filter docker-proxy --filter ci --filter git dev:agent-ci",
     "dev:local-actions": "pnpm --parallel --filter docker-proxy --filter ci --filter git dev:local-actions",
+    "dev:workflows": "pnpm --parallel --filter docker-proxy --filter ci --filter git dev:workflows",
     "lint": "vp run -r lint",
     "prepare": "vp config",
     "smoke": "./scripts/smoke-test.sh",
@@ -21,5 +22,5 @@
   "engines": {
     "node": ">=22.12.0"
   },
-  "packageManager": "pnpm@10.33.2"
+  "packageManager": "pnpm@11.1.2"
 }
